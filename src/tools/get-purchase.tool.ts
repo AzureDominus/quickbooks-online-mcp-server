@@ -20,11 +20,11 @@ const toolHandler = async (args: any) => {
   const startTime = Date.now();
 
   try {
-    const response = await getQuickbooksPurchase(args.params.id);
+    const response = await getQuickbooksPurchase(args.id);
 
     if (response.isError) {
       logToolResponse("get_purchase", false, Date.now() - startTime);
-      logger.error(`Failed to get purchase: ${response.error}`, undefined, { purchaseId: args.params.id });
+      logger.error(`Failed to get purchase: ${response.error}`, undefined, { purchaseId: args.id });
       return {
         content: [
           { type: "text" as const, text: `Error getting purchase: ${response.error}` },
@@ -33,7 +33,7 @@ const toolHandler = async (args: any) => {
     }
 
     logToolResponse("get_purchase", true, Date.now() - startTime);
-    logger.info("Purchase retrieved successfully", { purchaseId: args.params.id });
+    logger.info("Purchase retrieved successfully", { purchaseId: args.id });
     return {
       content: [
         { type: "text" as const, text: `Purchase retrieved:` },
@@ -42,7 +42,7 @@ const toolHandler = async (args: any) => {
     };
   } catch (error) {
     logToolResponse("get_purchase", false, Date.now() - startTime);
-    logger.error("Failed to get purchase", error, { purchaseId: args.params?.id });
+    logger.error("Failed to get purchase", error, { purchaseId: args?.id });
     throw error;
   }
 };

@@ -1,6 +1,7 @@
 import { downloadAttachment } from "../handlers/upload-attachment.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
+import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
 
 const toolName = "download_attachment";
 const toolDescription = `Download an attachment from QuickBooks to a local file.
@@ -13,20 +14,33 @@ const toolSchema = z.object({
   destination_path: z.string().min(1).describe("Local file path or directory to save the attachment to. Supports ~ for home directory."),
 });
 
-const toolHandler = async ({ params }: any) => {
-  const response = await downloadAttachment(params.attachment_id, params.destination_path);
+const toolHandler = async (args: any) => {
+  logToolRequest(toolName, args);
+  const startTime = Date.now();
 
-  if (response.isError) {
+  try {
+    const response = await downloadAttachment(args.attachment_id, args.destination_path);
+
+    if (response.isError) {
+      logToolResponse(toolName, false, Date.now() - startTime);
+      logger.error(`Failed to download attachment: ${response.error}`, undefined, { attachmentId: args.attachment_id });
+      return {
+        content: [{ type: "text" as const, text: `Error downloading attachment: ${response.error}` }],
+      };
+    }
+
+    logToolResponse(toolName, true, Date.now() - startTime);
+    logger.info("Attachment downloaded successfully", { attachmentId: args.attachment_id, filePath: response.result?.filePath });
     return {
-      content: [{ type: "text" as const, text: `Error downloading attachment: ${response.error}` }],
+      content: [
+        { type: "text" as const, text: `Downloaded attachment to ${response.result?.filePath} (${response.result?.size} bytes)` },
+      ],
     };
+  } catch (error) {
+    logToolResponse(toolName, false, Date.now() - startTime);
+    logger.error("Failed to download attachment", error, { attachmentId: args?.attachment_id });
+    throw error;
   }
-
-  return {
-    content: [
-      { type: "text" as const, text: `Downloaded attachment to ${response.result?.filePath} (${response.result?.size} bytes)` },
-    ],
-  };
 };
 
 export const DownloadAttachmentTool: ToolDefinition<typeof toolSchema> = {

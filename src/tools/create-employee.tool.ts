@@ -18,10 +18,10 @@ type ToolParams = z.infer<typeof toolSchema>;
 const toolHandler = async (args: any) => {
   const startTime = Date.now();
   
-  logToolRequest(toolName, args.params);
+  logToolRequest(toolName, args);
 
   try {
-    const response = await createQuickbooksEmployee(args.params.employee);
+    const response = await createQuickbooksEmployee(args.employee);
 
     if (response.isError) {
       logger.error('Failed to create employee', new Error(response.error || 'Unknown error'));

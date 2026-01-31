@@ -20,11 +20,11 @@ const toolHandler = async (args: any) => {
   const startTime = Date.now();
 
   try {
-    const response = await getQuickbooksJournalEntry(args.params.id);
+    const response = await getQuickbooksJournalEntry(args.id);
 
     if (response.isError) {
       logToolResponse("get_journal_entry", false, Date.now() - startTime);
-      logger.error(`Failed to get journal entry: ${response.error}`, undefined, { journalEntryId: args.params.id });
+      logger.error(`Failed to get journal entry: ${response.error}`, undefined, { journalEntryId: args.id });
       return {
         content: [
           { type: "text" as const, text: `Error getting journal entry: ${response.error}` },
@@ -33,7 +33,7 @@ const toolHandler = async (args: any) => {
     }
 
     logToolResponse("get_journal_entry", true, Date.now() - startTime);
-    logger.info("Journal entry retrieved successfully", { journalEntryId: args.params.id });
+    logger.info("Journal entry retrieved successfully", { journalEntryId: args.id });
     return {
       content: [
         { type: "text" as const, text: `Journal entry retrieved:` },
@@ -42,7 +42,7 @@ const toolHandler = async (args: any) => {
     };
   } catch (error) {
     logToolResponse("get_journal_entry", false, Date.now() - startTime);
-    logger.error("Failed to get journal entry", error, { journalEntryId: args.params?.id });
+    logger.error("Failed to get journal entry", error, { journalEntryId: args?.id });
     throw error;
   }
 };
