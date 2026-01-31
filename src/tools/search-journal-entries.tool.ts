@@ -10,7 +10,13 @@ const toolDescription = `Search journal entries in QuickBooks Online with advanc
 Journal entries are used to record debits and credits to accounts, typically for adjusting entries, 
 accruals, reclassifications, or other accounting adjustments.
 
-SEARCHABLE FIELDS:
+FILTER OPTIONS:
+- txnDateFrom/txnDateTo: Filter by transaction date range (YYYY-MM-DD)
+- totalAmtMin/totalAmtMax: Filter by total amount range
+- docNumber: Filter by document/reference number (use % for LIKE matching)
+- adjustment: Filter by adjustment flag (true/false)
+
+SEARCHABLE FIELDS (for advanced criteria):
 - Id: Unique identifier for the journal entry
 - DocNumber: Document/reference number
 - TxnDate: Transaction date (YYYY-MM-DD)
@@ -31,17 +37,26 @@ SORTING:
 - desc: Sort descending by field name
 
 PAGINATION:
-- limit: Maximum results to return
+- limit: Maximum results to return (1-1000, default 100)
 - offset: Number of records to skip
 
-Example - Find journal entries in January 2026:
+OPTIONS:
+- count: If true, only return count of matching records
+- fetchAll: If true, fetch all matching records (may be slow)
+
+Example - Find journal entries in January 2026 over $1000:
 {
-  "criteria": [
-    { "field": "TxnDate", "value": "2026-01-01", "operator": ">=" },
-    { "field": "TxnDate", "value": "2026-01-31", "operator": "<=" }
-  ],
+  "txnDateFrom": "2026-01-01",
+  "txnDateTo": "2026-01-31",
+  "totalAmtMin": 1000,
   "desc": "TxnDate",
   "limit": 100
+}
+
+Example - Find adjustment entries:
+{
+  "adjustment": true,
+  "desc": "TotalAmt"
 }`;
 
 // Allowed fields for JournalEntry entity filtering
@@ -79,9 +94,35 @@ const CriterionSchema = z.object({
 
 // Define the expected input schema for searching journal entries
 const toolSchema = z.object({
+  // Convenience filter parameters
+  /** Start date (inclusive) for transaction date */
+  txnDateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .describe("Filter by start date (YYYY-MM-DD, inclusive)"),
+  /** End date (inclusive) for transaction date */
+  txnDateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .describe("Filter by end date (YYYY-MM-DD, inclusive)"),
+  /** Minimum total amount */
+  totalAmtMin: z.number()
+    .optional()
+    .describe("Filter by minimum total amount"),
+  /** Maximum total amount */
+  totalAmtMax: z.number()
+    .optional()
+    .describe("Filter by maximum total amount"),
+  /** Document/reference number filter */
+  docNumber: z.string()
+    .optional()
+    .describe("Filter by document/reference number (use % for LIKE matching)"),
+  /** Filter by adjustment flag */
+  adjustment: z.boolean()
+    .optional()
+    .describe("Filter by adjustment flag (true = adjustment entries only)"),
+  // Advanced criteria for complex queries
   criteria: z.array(CriterionSchema)
     .optional()
-    .describe("Filter criteria for searching journal entries"),
+    .describe("Additional filter criteria for advanced queries"),
   asc: z.enum(ALLOWED_SORT_FIELDS)
     .optional()
     .describe(`Sort ascending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
@@ -90,7 +131,7 @@ const toolSchema = z.object({
     .describe(`Sort descending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
   limit: z.number().int().min(1).max(1000)
     .optional()
-    .describe("Maximum results to return (1-1000)"),
+    .describe("Maximum results to return (1-1000, default 100)"),
   offset: z.number().int().min(0)
     .optional()
     .describe("Number of records to skip for pagination"),
@@ -101,6 +142,42 @@ const toolSchema = z.object({
     .optional()
     .describe("If true, fetch all matching records (may be slow)"),
 });
+
+/**
+ * Build search criteria from convenience filter parameters
+ */
+function buildJournalEntrySearchCriteria(input: ToolParams): Array<{ field: string; value: string | boolean; operator?: string }> {
+  const criteria: Array<{ field: string; value: string | boolean; operator?: string }> = [];
+
+  // Transaction date range filters
+  if (input.txnDateFrom) {
+    criteria.push({ field: 'TxnDate', value: input.txnDateFrom, operator: '>=' });
+  }
+  if (input.txnDateTo) {
+    criteria.push({ field: 'TxnDate', value: input.txnDateTo, operator: '<=' });
+  }
+
+  // Amount range filters
+  if (input.totalAmtMin !== undefined) {
+    criteria.push({ field: 'TotalAmt', value: input.totalAmtMin.toString(), operator: '>=' });
+  }
+  if (input.totalAmtMax !== undefined) {
+    criteria.push({ field: 'TotalAmt', value: input.totalAmtMax.toString(), operator: '<=' });
+  }
+
+  // Document number filter
+  if (input.docNumber !== undefined) {
+    const operator = input.docNumber.includes('%') ? 'LIKE' : '=';
+    criteria.push({ field: 'DocNumber', value: input.docNumber, operator });
+  }
+
+  // Adjustment flag filter
+  if (input.adjustment !== undefined) {
+    criteria.push({ field: 'Adjustment', value: input.adjustment, operator: '=' });
+  }
+
+  return criteria;
+}
 
 type ToolParams = z.infer<typeof toolSchema>;
 
@@ -113,7 +190,32 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
   logToolRequest(toolName, input);
 
   try {
-    const response = await searchQuickbooksJournalEntries(input);
+    // Build criteria from convenience filter parameters
+    const convenienceFilters = buildJournalEntrySearchCriteria(input);
+    
+    // Merge convenience filters with any advanced criteria
+    const allCriteria = [
+      ...convenienceFilters,
+      ...(input.criteria || []),
+    ];
+    
+    // Build search params
+    const searchParams = {
+      criteria: allCriteria.length > 0 ? allCriteria : undefined,
+      asc: input.asc,
+      desc: input.desc,
+      limit: input.limit,
+      offset: input.offset,
+      count: input.count,
+      fetchAll: input.fetchAll,
+    };
+    
+    logger.debug('Built journal entry search criteria', {
+      convenienceFiltersCount: convenienceFilters.length,
+      totalCriteriaCount: allCriteria.length,
+    });
+    
+    const response = await searchQuickbooksJournalEntries(searchParams);
 
     if (response.isError) {
       logger.error('Failed to search journal entries', new Error(response.error || 'Unknown error'));

@@ -9,7 +9,13 @@ const toolDescription = `Search items (products and services) in QuickBooks Onli
 
 Items are products or services that a company buys, sells, or resells.
 
-SEARCHABLE FIELDS:
+FILTER OPTIONS:
+- type: Filter by item type ('Service', 'Inventory', 'NonInventory', 'Group', 'Category')
+- active: Filter by active status (true/false)
+- unitPriceMin/unitPriceMax: Filter by unit price range
+- name: Filter by item name (use % for LIKE matching)
+
+SEARCHABLE FIELDS (for advanced criteria):
 - Id: Unique identifier for the item
 - Name: Item name (unique within account)
 - Active: Whether item is active (true/false)
@@ -18,11 +24,9 @@ SEARCHABLE FIELDS:
 - MetaData.CreateTime: Record creation timestamp
 - MetaData.LastUpdatedTime: Last modification timestamp
 
-SORTABLE FIELDS (in addition to searchable):
-- ParentRef: Parent item reference (for sub-items)
-- PrefVendorRef: Preferred vendor reference
-- UnitPrice: Sale price per unit
-- QtyOnHand: Quantity on hand (inventory items only)
+SORTABLE FIELDS:
+- Id, Name, Type, ParentRef, PrefVendorRef, UnitPrice, QtyOnHand
+- MetaData.CreateTime, MetaData.LastUpdatedTime
 
 OPERATORS:
 - "=" : Exact match (default)
@@ -35,17 +39,32 @@ SORTING:
 - desc: Sort descending by field name
 
 PAGINATION:
-- limit: Maximum results to return
+- limit: Maximum results to return (1-1000, default 100)
 - offset: Number of records to skip
 
-Example - Find active inventory items:
+OPTIONS:
+- count: If true, only return count of matching records
+- fetchAll: If true, fetch all matching records (may be slow)
+
+Example - Find active service items:
 {
-  "criteria": [
-    { "field": "Active", "value": true },
-    { "field": "Type", "value": "Inventory" }
-  ],
+  "type": "Service",
+  "active": true,
   "asc": "Name",
   "limit": 100
+}
+
+Example - Find items priced over $50:
+{
+  "unitPriceMin": 50,
+  "active": true,
+  "desc": "UnitPrice"
+}
+
+Example - Search items by name:
+{
+  "name": "%consulting%",
+  "type": "Service"
 }`;
 
 // Allowed field lists based on QuickBooks Online Item entity documentation
@@ -55,6 +74,7 @@ const ALLOWED_FILTER_FIELDS = [
   "Active",
   "Type",
   "Sku",
+  "UnitPrice",
   "MetaData.CreateTime",
   "MetaData.LastUpdatedTime",
 ] as const;
@@ -83,11 +103,36 @@ const CriterionSchema = z.object({
     .describe("Comparison operator (default: =)"),
 });
 
+// Item types supported by QuickBooks Online
+const ITEM_TYPES = ["Service", "Inventory", "NonInventory", "Group", "Category"] as const;
+
 // Define the expected input schema for searching items
 const toolSchema = z.object({
+  // Convenience filter parameters
+  /** Filter by item type */
+  type: z.enum(ITEM_TYPES)
+    .optional()
+    .describe("Filter by item type ('Service', 'Inventory', 'NonInventory', 'Group', 'Category')"),
+  /** Filter by active status */
+  active: z.boolean()
+    .optional()
+    .describe("Filter by active status (true/false)"),
+  /** Minimum unit price */
+  unitPriceMin: z.number()
+    .optional()
+    .describe("Filter by minimum unit price"),
+  /** Maximum unit price */
+  unitPriceMax: z.number()
+    .optional()
+    .describe("Filter by maximum unit price"),
+  /** Filter by item name */
+  name: z.string()
+    .optional()
+    .describe("Filter by item name (use % for LIKE matching)"),
+  // Advanced criteria for complex queries
   criteria: z.array(CriterionSchema)
     .optional()
-    .describe("Filter criteria for searching items"),
+    .describe("Additional filter criteria for advanced queries"),
   asc: z.enum(ALLOWED_SORT_FIELDS)
     .optional()
     .describe(`Sort ascending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
@@ -96,7 +141,7 @@ const toolSchema = z.object({
     .describe(`Sort descending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
   limit: z.number().int().min(1).max(1000)
     .optional()
-    .describe("Maximum results to return (1-1000)"),
+    .describe("Maximum results to return (1-1000, default 100)"),
   offset: z.number().int().min(0)
     .optional()
     .describe("Number of records to skip for pagination"),
@@ -107,6 +152,39 @@ const toolSchema = z.object({
     .optional()
     .describe("If true, fetch all matching records (may be slow)"),
 });
+
+/**
+ * Build search criteria from convenience filter parameters
+ */
+function buildItemSearchCriteria(input: ToolParams): Array<{ field: string; value: string | boolean; operator?: string }> {
+  const criteria: Array<{ field: string; value: string | boolean; operator?: string }> = [];
+
+  // Item type filter
+  if (input.type !== undefined) {
+    criteria.push({ field: 'Type', value: input.type, operator: '=' });
+  }
+
+  // Active status filter
+  if (input.active !== undefined) {
+    criteria.push({ field: 'Active', value: input.active, operator: '=' });
+  }
+
+  // Unit price range filters
+  if (input.unitPriceMin !== undefined) {
+    criteria.push({ field: 'UnitPrice', value: input.unitPriceMin.toString(), operator: '>=' });
+  }
+  if (input.unitPriceMax !== undefined) {
+    criteria.push({ field: 'UnitPrice', value: input.unitPriceMax.toString(), operator: '<=' });
+  }
+
+  // Name filter with LIKE support
+  if (input.name !== undefined) {
+    const operator = input.name.includes('%') ? 'LIKE' : '=';
+    criteria.push({ field: 'Name', value: input.name, operator });
+  }
+
+  return criteria;
+}
 
 type ToolParams = z.infer<typeof toolSchema>;
 
@@ -119,7 +197,32 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
   logToolRequest(toolName, input);
 
   try {
-    const response = await searchQuickbooksItems(input);
+    // Build criteria from convenience filter parameters
+    const convenienceFilters = buildItemSearchCriteria(input);
+    
+    // Merge convenience filters with any advanced criteria
+    const allCriteria = [
+      ...convenienceFilters,
+      ...(input.criteria || []),
+    ];
+    
+    // Build search params
+    const searchParams = {
+      criteria: allCriteria.length > 0 ? allCriteria : undefined,
+      asc: input.asc,
+      desc: input.desc,
+      limit: input.limit,
+      offset: input.offset,
+      count: input.count,
+      fetchAll: input.fetchAll,
+    };
+    
+    logger.debug('Built item search criteria', {
+      convenienceFiltersCount: convenienceFilters.length,
+      totalCriteriaCount: allCriteria.length,
+    });
+    
+    const response = await searchQuickbooksItems(searchParams);
 
     if (response.isError) {
       logger.error('Failed to search items', new Error(response.error || 'Unknown error'));
