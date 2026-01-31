@@ -1,5 +1,8 @@
 # QuickBooks MCP Server - Next Steps Tracking (Phase 2)
 
+> **Security Note:** `.env` is intentionally ignored and must never be committed. Use `.env.example` as a template.
+
+
 > **Last Updated:** 2026-01-31
 > **Status:** 🔄 IN PROGRESS - 17/30 Complete
 
