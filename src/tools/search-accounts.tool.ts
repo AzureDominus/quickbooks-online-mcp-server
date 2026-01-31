@@ -81,9 +81,10 @@ const sortableFieldSchema = z
 
 // Advanced criteria shape
 const operatorSchema = z.enum(["=", "IN", "<", ">", "<=", ">=", "LIKE"]).optional();
+const criteriaValueSchema = z.union([z.string(), z.number(), z.boolean(), z.array(z.union([z.string(), z.number(), z.boolean()]))]);
 const filterSchema = z.object({
   field: filterableFieldSchema,
-  value: z.any(),
+  value: criteriaValueSchema,
   operator: operatorSchema,
 }).superRefine((obj, ctx) => {
   if (!isValidValueType(obj.field, obj.value)) {
@@ -105,9 +106,10 @@ const advancedCriteriaSchema = z.object({
 });
 
 // Runtime schema keeps full validation
+const simpleFilterValueSchema = z.union([z.string(), z.number(), z.boolean()]);
 const RUNTIME_CRITERIA_SCHEMA = z.union([
-  z.record(z.any()),
-  z.array(z.record(z.any())),
+  z.record(z.string(), simpleFilterValueSchema),
+  z.array(z.record(z.string(), simpleFilterValueSchema)),
   advancedCriteriaSchema,
 ]);
 
@@ -164,10 +166,10 @@ function normalizeAccountCriteria(criteria: any): any {
   return criteria;
 }
 
-// Schema exposed to function definition – use broad schema to sidestep $ref errors
-const criteriaSchema = z.any();
+// Schema exposed to function definition - typed schema for MCP tool
+const criteriaSchema = advancedCriteriaSchema;
 
-const toolSchema = z.object({ criteria: criteriaSchema });
+const toolSchema = z.object({ criteria: criteriaSchema.optional() });
 
 // Tool handler with runtime validation & coercion
 const toolHandler = async ({ params }: any) => {
