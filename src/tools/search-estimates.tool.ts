@@ -1,95 +1,147 @@
 import { searchQuickbooksEstimates } from "../handlers/search-quickbooks-estimates.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
+import { SearchEstimatesInputSchema, type SearchEstimatesInput } from "../types/qbo-schemas.js";
+import { buildEstimateSearchCriteria } from "../helpers/transform.js";
+import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
 
+// Define the tool metadata
 const toolName = "search_estimates";
-const toolDescription = "Search estimates in QuickBooks Online that match given criteria.";
+const toolDescription = `Search estimates in QuickBooks Online with advanced filtering.
 
-// A subset of commonly‑used Estimate fields that can be filtered on.
-// This is *not* an exhaustive list, but provides helpful IntelliSense / docs
-// to users of the tool.  Any field returned in the Quickbooks Estimate entity is
-// technically valid.
-const estimateFieldEnum = z.enum([
-  "Id",
-  "DocNumber",
-  "TxnDate",
-  "TxnStatus",
-  "CustomerRef",
-  "TotalAmt",
-  "MetaData.CreateTime",
-  "MetaData.LastUpdatedTime",
-]).describe(
-  "Field to filter on – must be a property of the QuickBooks Online Estimate entity."
-);
+Supports filtering by date range, expiration date range, amount range, customer, and status.
+Returns a paginated list of matching estimates with key details.
 
-const criterionSchema = z.object({
-  key: z.string().describe("Simple key (legacy) – any Estimate property name."),
-  value: z.union([z.string(), z.boolean()]),
-});
+FILTER OPTIONS:
+- dateFrom/dateTo: Filter by transaction date range (YYYY-MM-DD)
+- expirationFrom/expirationTo: Filter by expiration date range (YYYY-MM-DD)
+- amountMin/amountMax: Filter by total amount range
+- customerId: Filter by exact customer ID
+- txnStatus: Filter by status ('Pending', 'Accepted', 'Closed', 'Rejected')
+- search: Search text in estimate number (partial match)
 
-// Advanced criterion schema with operator support.
-const advancedCriterionSchema = z.object({
-  field: estimateFieldEnum,
-  value: z.union([z.string(), z.boolean()]),
-  operator: z
-    .enum(["=", "<", ">", "<=", ">=", "LIKE", "IN"])
-    .optional()
-    .describe("Comparison operator. Defaults to '=' if omitted."),
-});
+SORTING:
+- asc: Sort ascending by field (e.g., 'TxnDate', 'TotalAmt')
+- desc: Sort descending by field
 
-const toolSchema = z.object({
-  // Allow advanced criteria array like [{field,value,operator}]
-  criteria: z
-    .array(advancedCriterionSchema.or(criterionSchema))
-    .optional()
-    .describe(
-      "Filters to apply. Use the advanced form {field,value,operator?} for operators or the simple {key,value} pairs."
-    ),
+PAGINATION:
+- limit: Maximum results to return (1-1000, default 100)
+- offset: Number of records to skip (for pagination)
 
-  limit: z.number().optional(),
-  offset: z.number().optional(),
-  asc: z.string().optional(),
-  desc: z.string().optional(),
-  fetchAll: z.boolean().optional(),
-  count: z.boolean().optional(),
-});
+OPTIONS:
+- count: If true, only return count of matching records
+- fetchAll: If true, fetch all matching records (may be slow)
+
+Example - Find pending estimates over $1000 in January 2026:
+{
+  "dateFrom": "2026-01-01",
+  "dateTo": "2026-01-31",
+  "amountMin": 1000,
+  "txnStatus": "Pending",
+  "desc": "TotalAmt",
+  "limit": 50
+}`;
+
+// Use the properly typed schema
+const toolSchema = SearchEstimatesInputSchema;
+
+// Define the tool handler
+const toolHandler = async (args: { [x: string]: any }) => {
+  const startTime = Date.now();
+  const input = args as SearchEstimatesInput;
+  
+  logToolRequest(toolName, input);
+
+  try {
+    // Build search criteria from input
+    const { criteria, options } = buildEstimateSearchCriteria(input);
+    
+    logger.debug('Built estimate search criteria', { 
+      criteriaCount: criteria.length, 
+      options,
+    });
+
+    // Combine criteria and options for the handler
+    const searchParams = {
+      criteria,
+      ...options,
+    };
+
+    const response = await searchQuickbooksEstimates(searchParams);
+
+    if (response.isError) {
+      logger.error('Failed to search estimates', new Error(response.error || 'Unknown error'));
+      logToolResponse(toolName, false, Date.now() - startTime);
+      return {
+        content: [
+          { type: "text" as const, text: `Error searching estimates: ${response.error}` },
+        ],
+      };
+    }
+
+    // Handle count-only response
+    if (input.count && typeof response.result === 'number') {
+      logToolResponse(toolName, true, Date.now() - startTime);
+      return {
+        content: [
+          { type: "text" as const, text: `Found ${response.result} matching estimates` },
+        ],
+      };
+    }
+
+    // Get estimates from response (handler already extracts from QueryResponse)
+    const estimates = response.result || [];
+    const estimateArray = Array.isArray(estimates) ? estimates : [estimates];
+    
+    logger.info('Estimate search completed', {
+      resultCount: estimateArray.length,
+      limit: input.limit,
+      offset: input.offset,
+    });
+    logToolResponse(toolName, true, Date.now() - startTime);
+
+    // Build response with pagination info
+    const responseData = {
+      estimates: estimateArray,
+      count: estimateArray.length,
+      pagination: {
+        limit: input.limit || 100,
+        offset: input.offset || 0,
+        hasMore: estimateArray.length === (input.limit || 100),
+      },
+      filters: {
+        dateFrom: input.dateFrom,
+        dateTo: input.dateTo,
+        expirationFrom: input.expirationFrom,
+        expirationTo: input.expirationTo,
+        amountMin: input.amountMin,
+        amountMax: input.amountMax,
+        customerId: input.customerId,
+        txnStatus: input.txnStatus,
+        search: input.search,
+      },
+    };
+
+    return {
+      content: [
+        { type: "text" as const, text: `Found ${estimateArray.length} estimates:` },
+        { type: "text" as const, text: JSON.stringify(responseData, null, 2) },
+      ],
+    };
+  } catch (error) {
+    logger.error('Unexpected error in search_estimates', error);
+    logToolResponse(toolName, false, Date.now() - startTime);
+    return {
+      content: [
+        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+      ],
+    };
+  }
+};
 
 export const SearchEstimatesTool: ToolDefinition<typeof toolSchema> = {
   name: toolName,
   description: toolDescription,
   schema: toolSchema,
-  handler: async (args) => {
-    const { criteria = [], ...options } = (args.params ?? {}) as z.infer<typeof toolSchema>;
-
-    // build criteria to pass to SDK, supporting advanced operator syntax
-    let criteriaToSend: any;
-    if (Array.isArray(criteria) && criteria.length > 0) {
-      const first = criteria[0] as any;
-      if (typeof first === "object" && "field" in first) {
-        criteriaToSend = [...criteria, ...Object.entries(options).map(([key, value]) => ({ field: key, value }))];
-      } else {
-        criteriaToSend = (criteria as Array<{ key: string; value: any }>).reduce<Record<string, any>>((acc, { key, value }) => {
-          if (value !== undefined && value !== null) acc[key] = value;
-          return acc;
-        }, { ...options });
-      }
-    } else {
-      criteriaToSend = { ...options };
-    }
-
-    const response = await searchQuickbooksEstimates(criteriaToSend);
-    if (response.isError) {
-      return {
-        content: [{ type: "text" as const, text: `Error searching estimates: ${response.error}` }],
-      };
-    }
-    return {
-      content: [
-        { type: "text" as const, text: Array.isArray(response.result) ? `Found ${response.result.length} estimates:` : `Count: ${response.result}` },
-        ...(Array.isArray(response.result)
-          ? response.result.map((e) => ({ type: "text" as const, text: JSON.stringify(e) }))
-          : []),
-      ],
-    };
-  },
+  handler: toolHandler,
 }; 

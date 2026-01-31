@@ -1,6 +1,7 @@
 import { searchQuickbooksAccounts } from "../handlers/search-quickbooks-accounts.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
+import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
 
 const toolName = "search_accounts";
 const toolDescription = "Search chart‑of‑accounts entries using criteria.";
@@ -170,23 +171,38 @@ const toolSchema = z.object({ criteria: criteriaSchema });
 
 // Tool handler with runtime validation & coercion
 const toolHandler = async ({ params }: any) => {
-  const { criteria } = params;
-  const parsed = RUNTIME_CRITERIA_SCHEMA.safeParse(criteria);
-  if (!parsed.success) {
-    return { content: [{ type: "text" as const, text: `Invalid criteria: ${parsed.error.message}` }] };
+  logToolRequest("search_accounts", params);
+  const startTime = Date.now();
+
+  try {
+    const { criteria } = params;
+    const parsed = RUNTIME_CRITERIA_SCHEMA.safeParse(criteria);
+    if (!parsed.success) {
+      logToolResponse("search_accounts", false, Date.now() - startTime);
+      logger.warn("Invalid criteria provided", { error: parsed.error.message });
+      return { content: [{ type: "text" as const, text: `Invalid criteria: ${parsed.error.message}` }] };
+    }
+    const normalized = normalizeAccountCriteria(criteria);
+    const response = await searchQuickbooksAccounts(normalized);
+    if (response.isError) {
+      logToolResponse("search_accounts", false, Date.now() - startTime);
+      logger.error("Accounts search failed", response.error, { criteria: normalized });
+      return { content: [{ type: "text" as const, text: `Error searching accounts: ${response.error}` }] };
+    }
+    const accounts = response.result;
+    logToolResponse("search_accounts", true, Date.now() - startTime);
+    logger.info("Accounts search completed", { count: accounts?.length || 0, criteria: normalized });
+    return {
+      content: [
+        { type: "text" as const, text: `Found ${accounts?.length || 0} accounts:` },
+        ...(accounts?.map((acc: any) => ({ type: "text" as const, text: JSON.stringify(acc) })) || []),
+      ],
+    };
+  } catch (error) {
+    logToolResponse("search_accounts", false, Date.now() - startTime);
+    logger.error("Accounts search failed", error, { params });
+    throw error;
   }
-  const normalized = normalizeAccountCriteria(criteria);
-  const response = await searchQuickbooksAccounts(normalized);
-  if (response.isError) {
-    return { content: [{ type: "text" as const, text: `Error searching accounts: ${response.error}` }] };
-  }
-  const accounts = response.result;
-  return {
-    content: [
-      { type: "text" as const, text: `Found ${accounts?.length || 0} accounts:` },
-      ...(accounts?.map((acc: any) => ({ type: "text" as const, text: JSON.stringify(acc) })) || []),
-    ],
-  };
 };
 
 // Update export

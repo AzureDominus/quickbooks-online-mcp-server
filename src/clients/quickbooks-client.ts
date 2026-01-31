@@ -6,16 +6,58 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import open from 'open';
+import os from 'os';
 
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const client_id = process.env.QUICKBOOKS_CLIENT_ID;
 const client_secret = process.env.QUICKBOOKS_CLIENT_SECRET;
-const refresh_token = process.env.QUICKBOOKS_REFRESH_TOKEN;
-const realm_id = process.env.QUICKBOOKS_REALM_ID;
 const environment = process.env.QUICKBOOKS_ENVIRONMENT || 'sandbox';
-const redirect_uri = 'http://localhost:8000/callback';
+const oauth_port = parseInt(process.env.QUICKBOOKS_OAUTH_PORT || '8765', 10);
+const redirect_uri = `http://localhost:${oauth_port}/callback`;
+
+// Token storage path - configurable via env var, defaults to ~/.config/quickbooks-mcp/tokens.json
+const TOKEN_STORAGE_PATH = process.env.QUICKBOOKS_TOKEN_PATH || 
+  path.join(os.homedir(), '.config', 'quickbooks-mcp', 'tokens.json');
+
+interface StoredTokens {
+  refresh_token: string;
+  realm_id: string;
+  environment: string;
+}
+
+function loadStoredTokens(): StoredTokens | null {
+  try {
+    if (fs.existsSync(TOKEN_STORAGE_PATH)) {
+      const data = JSON.parse(fs.readFileSync(TOKEN_STORAGE_PATH, 'utf-8'));
+      // Only use stored tokens if environment matches
+      if (data.environment === environment) {
+        return data;
+      }
+    }
+  } catch (e) {
+    // Ignore errors, will trigger new OAuth flow
+  }
+  return null;
+}
+
+function saveTokens(tokens: StoredTokens): void {
+  try {
+    const tokenDir = path.dirname(TOKEN_STORAGE_PATH);
+    if (!fs.existsSync(tokenDir)) {
+      fs.mkdirSync(tokenDir, { recursive: true });
+    }
+    fs.writeFileSync(TOKEN_STORAGE_PATH, JSON.stringify(tokens, null, 2));
+  } catch (e) {
+    console.error('Failed to save tokens:', e);
+  }
+}
+
+// Load stored tokens, fall back to env vars
+const storedTokens = loadStoredTokens();
+const refresh_token = storedTokens?.refresh_token || process.env.QUICKBOOKS_REFRESH_TOKEN;
+const realm_id = storedTokens?.realm_id || process.env.QUICKBOOKS_REALM_ID;
 
 // Only throw error if client_id or client_secret is missing
 if (!client_id || !client_secret || !redirect_uri) {
@@ -63,7 +105,7 @@ class QuickbooksClient {
     }
 
     this.isAuthenticating = true;
-    const port = 8000;
+    const port = oauth_port;
 
     return new Promise((resolve, reject) => {
       // Create temporary server for OAuth callback
@@ -153,23 +195,13 @@ class QuickbooksClient {
   }
 
   private saveTokensToEnv(): void {
-    const tokenPath = path.join(__dirname, '..', '..', '.env');
-    const envContent = fs.readFileSync(tokenPath, 'utf-8');
-    const envLines = envContent.split('\n');
-    
-    const updateEnvVar = (name: string, value: string) => {
-      const index = envLines.findIndex(line => line.startsWith(`${name}=`));
-      if (index !== -1) {
-        envLines[index] = `${name}=${value}`;
-      } else {
-        envLines.push(`${name}=${value}`);
-      }
-    };
-
-    if (this.refreshToken) updateEnvVar('QUICKBOOKS_REFRESH_TOKEN', this.refreshToken);
-    if (this.realmId) updateEnvVar('QUICKBOOKS_REALM_ID', this.realmId);
-
-    fs.writeFileSync(tokenPath, envLines.join('\n'));
+    if (this.refreshToken && this.realmId) {
+      saveTokens({
+        refresh_token: this.refreshToken,
+        realm_id: this.realmId,
+        environment: this.environment,
+      });
+    }
   }
 
   async refreshAccessToken() {

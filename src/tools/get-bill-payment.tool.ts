@@ -1,5 +1,6 @@
 import { getQuickbooksBillPayment } from "../handlers/get-quickbooks-bill-payment.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
+import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
 import { z } from "zod";
 
 // Define the tool metadata
@@ -15,22 +16,35 @@ type ToolParams = z.infer<typeof toolSchema>;
 
 // Define the tool handler
 const toolHandler = async (args: any) => {
-  const response = await getQuickbooksBillPayment(args.params.id);
+  logToolRequest("get_bill_payment", args);
+  const startTime = Date.now();
 
-  if (response.isError) {
+  try {
+    const response = await getQuickbooksBillPayment(args.params.id);
+
+    if (response.isError) {
+      logToolResponse("get_bill_payment", false, Date.now() - startTime);
+      logger.error(`Failed to get bill payment: ${response.error}`, undefined, { billPaymentId: args.params.id });
+      return {
+        content: [
+          { type: "text" as const, text: `Error getting bill payment: ${response.error}` },
+        ],
+      };
+    }
+
+    logToolResponse("get_bill_payment", true, Date.now() - startTime);
+    logger.info("Bill payment retrieved successfully", { billPaymentId: args.params.id });
     return {
       content: [
-        { type: "text" as const, text: `Error getting bill payment: ${response.error}` },
+        { type: "text" as const, text: `Bill payment retrieved:` },
+        { type: "text" as const, text: JSON.stringify(response.result) },
       ],
     };
+  } catch (error) {
+    logToolResponse("get_bill_payment", false, Date.now() - startTime);
+    logger.error("Failed to get bill payment", error, { billPaymentId: args.params.id });
+    throw error;
   }
-
-  return {
-    content: [
-      { type: "text" as const, text: `Bill payment retrieved:` },
-      { type: "text" as const, text: JSON.stringify(response.result) },
-    ],
-  };
 };
 
 export const GetBillPaymentTool: ToolDefinition<typeof toolSchema> = {

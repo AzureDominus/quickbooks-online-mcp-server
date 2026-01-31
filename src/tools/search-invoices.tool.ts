@@ -1,133 +1,158 @@
 import { searchQuickbooksInvoices } from "../handlers/search-quickbooks-invoices.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
+import { SearchInvoicesInputSchema, type SearchInvoicesInput } from "../types/qbo-schemas.js";
+import { buildInvoiceSearchCriteria } from "../helpers/transform.js";
+import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
 
+// Define the tool metadata
 const toolName = "search_invoices";
-const toolDescription = "Search invoices in QuickBooks Online using criteria (maps to node-quickbooks findInvoices).";
+const toolDescription = `Search invoices in QuickBooks Online with advanced filtering.
 
-// ALLOWED FIELD LISTS (derived from Quickbooks Invoice entity docs – Filterable and Sortable columns)
-const ALLOWED_FILTER_FIELDS = [
-  "Id",
-  "MetaData.CreateTime",
-  "MetaData.LastUpdatedTime",
-  "DocNumber",
-  "TxnDate",
-  "DueDate",
-  "CustomerRef",
-  "ClassRef",
-  "DepartmentRef",
-  "Balance",
-  "TotalAmt",
-] as const;
+Invoices are sales forms that record sales of products or services to customers.
 
-const ALLOWED_SORT_FIELDS = [
-  "Id",
-  "MetaData.CreateTime",
-  "MetaData.LastUpdatedTime",
-  "DocNumber",
-  "TxnDate",
-  "Balance",
-  "TotalAmt",
-] as const;
+FILTER OPTIONS:
+- dateFrom/dateTo: Filter by invoice date range (YYYY-MM-DD)
+- dueFrom/dueTo: Filter by due date range (YYYY-MM-DD)
+- amountMin/amountMax: Filter by total amount range
+- balanceMin/balanceMax: Filter by unpaid balance range
+- customerId: Filter by customer ID
+- docNumber: Filter by invoice number
 
-// FIELD TYPE MAP
-const FIELD_TYPE_MAP = {
-  "Id": "string",
-  "MetaData.CreateTime": "date",
-  "MetaData.LastUpdatedTime": "date",
-  "DocNumber": "string",
-  "TxnDate": "date",
-  "DueDate": "date",
-  "CustomerRef": "string",
-  "ClassRef": "string",
-  "DepartmentRef": "string",
-  "Balance": "number",
-  "TotalAmt": "number",
-} as const;
+SORTING:
+- asc: Sort ascending by field (e.g., 'TxnDate', 'TotalAmt', 'Balance')
+- desc: Sort descending by field
 
-// Helper function to check if the value type matches the expected type for the field
-const isValidInvoiceValueType = (field: string, value: any): boolean => {
-  const expectedType = FIELD_TYPE_MAP[field as keyof typeof FIELD_TYPE_MAP];
-  return typeof value === expectedType;
-};
+PAGINATION:
+- limit: Maximum results to return (1-1000, default 100)
+- offset: Number of records to skip (for pagination)
 
-// Zod schemas that validate the fields against the white-lists
-const filterableFieldSchema = z
-  .string()
-  .refine((val) => (ALLOWED_FILTER_FIELDS as readonly string[]).includes(val), {
-    message: `Field must be one of: ${ALLOWED_FILTER_FIELDS.join(", ")}`,
-  });
+OPTIONS:
+- count: If true, only return count of matching records
+- fetchAll: If true, fetch all matching records (may be slow)
 
-const sortableFieldSchema = z
-  .string()
-  .refine((val) => (ALLOWED_SORT_FIELDS as readonly string[]).includes(val), {
-    message: `Sort field must be one of: ${ALLOWED_SORT_FIELDS.join(", ")}`,
-  });
+ADVANCED USAGE:
+- criteria: Array of raw filter objects for complex queries
 
-// Criteria can be advanced
-const operatorSchema = z.enum(["=", "IN", "<", ">", "<=", ">=", "LIKE"]).optional();
-const filterSchema = z.object({
-  field: filterableFieldSchema,
-  value: z.any(),
-  operator: operatorSchema,
-}).superRefine((obj, ctx) => {
-  if (!isValidInvoiceValueType(obj.field as string, obj.value)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: `Value type does not match expected type for field ${obj.field}`,
+Example - Find unpaid invoices over $500 in January 2026:
+{
+  "dateFrom": "2026-01-01",
+  "dateTo": "2026-01-31",
+  "amountMin": 500,
+  "balanceMin": 0.01,
+  "desc": "TotalAmt",
+  "limit": 50
+}
+
+Example - Find all invoices for a specific customer:
+{
+  "customerId": "123",
+  "desc": "TxnDate"
+}
+
+Example - Find overdue invoices (due before today with balance):
+{
+  "dueTo": "2026-01-30",
+  "balanceMin": 0.01,
+  "desc": "DueDate"
+}`;
+
+// Use the properly typed schema from qbo-schemas
+const toolSchema = SearchInvoicesInputSchema;
+
+// Define the tool handler - MCP SDK passes parsed args directly
+const toolHandler = async (args: { [x: string]: any }) => {
+  const startTime = Date.now();
+  // Args are passed directly as the schema result
+  const input = args as SearchInvoicesInput;
+  
+  logToolRequest(toolName, input);
+
+  try {
+    // Build search criteria from input
+    const { criteria, options } = buildInvoiceSearchCriteria(input);
+    
+    logger.debug('Built invoice search criteria', { 
+      criteriaCount: criteria.length, 
+      options,
     });
-  }
-});
 
-const advancedCriteriaSchema = z.object({
-  filters: z.array(filterSchema).optional(),
-  asc: sortableFieldSchema.optional(),
-  desc: sortableFieldSchema.optional(),
-  limit: z.number().optional(),
-  offset: z.number().optional(),
-  count: z.boolean().optional(),
-  fetchAll: z.boolean().optional(),
-});
+    // Combine criteria and options for the handler
+    const searchParams = {
+      criteria,
+      ...options,
+    };
 
-// Runtime schema used internally for validation
-const RUNTIME_CRITERIA_SCHEMA = z.union([
-  z.record(z.any()),
-  z.array(z.record(z.any())),
-  advancedCriteriaSchema,
-]);
+    const response = await searchQuickbooksInvoices(searchParams);
 
-// Exposed schema – use broad type to prevent deep $ref issues
-const toolSchema = z.object({ criteria: z.any() });
+    if (response.isError) {
+      logger.error('Failed to search invoices', new Error(response.error || 'Unknown error'));
+      logToolResponse(toolName, false, Date.now() - startTime);
+      return {
+        content: [
+          { type: "text" as const, text: `Error searching invoices: ${response.error}` },
+        ],
+      };
+    }
 
-const toolHandler = async ({ params }: any) => {
-  const { criteria } = params;
+    // Handle count-only response
+    if (input.count && typeof response.result === 'number') {
+      logToolResponse(toolName, true, Date.now() - startTime);
+      return {
+        content: [
+          { type: "text" as const, text: `Found ${response.result} matching invoices` },
+        ],
+      };
+    }
 
-  // Validate runtime schema
-  const parsed = RUNTIME_CRITERIA_SCHEMA.safeParse(criteria);
-  if (!parsed.success) {
+    const results = response.result || [];
+    const resultArray = Array.isArray(results) ? results : [results];
+    
+    logger.info('Invoice search completed', {
+      resultCount: resultArray.length,
+      limit: input.limit,
+      offset: input.offset,
+    });
+    logToolResponse(toolName, true, Date.now() - startTime);
+
+    // Build response with pagination info
+    const responseData = {
+      invoices: resultArray,
+      count: resultArray.length,
+      pagination: {
+        limit: input.limit || 100,
+        offset: input.offset || 0,
+        hasMore: resultArray.length === (input.limit || 100),
+      },
+      filters: {
+        dateFrom: input.dateFrom,
+        dateTo: input.dateTo,
+        dueFrom: input.dueFrom,
+        dueTo: input.dueTo,
+        amountMin: input.amountMin,
+        amountMax: input.amountMax,
+        balanceMin: input.balanceMin,
+        balanceMax: input.balanceMax,
+        customerId: input.customerId,
+        docNumber: input.docNumber,
+      },
+    };
+
     return {
       content: [
-        { type: "text" as const, text: `Invalid criteria: ${parsed.error.message}` },
+        { type: "text" as const, text: `Found ${resultArray.length} invoices:` },
+        { type: "text" as const, text: JSON.stringify(responseData, null, 2) },
+      ],
+    };
+  } catch (error) {
+    logger.error('Unexpected error in search_invoices', error);
+    logToolResponse(toolName, false, Date.now() - startTime);
+    return {
+      content: [
+        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
       ],
     };
   }
-
-  const response = await searchQuickbooksInvoices(criteria);
-
-  if (response.isError) {
-    return {
-      content: [
-        { type: "text" as const, text: `Error searching invoices: ${response.error}` },
-      ],
-    };
-  }
-  const invoices = response.result;
-  return {
-    content: [
-      { type: "text" as const, text: `Found ${invoices?.length || 0} invoices` },
-      ...(invoices?.map((inv) => ({ type: "text" as const, text: JSON.stringify(inv) })) || []),
-    ],
-  };
 };
 
 export const SearchInvoicesTool: ToolDefinition<typeof toolSchema> = {

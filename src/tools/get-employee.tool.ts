@@ -1,5 +1,6 @@
 import { getQuickbooksEmployee } from "../handlers/get-quickbooks-employee.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
+import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
 import { z } from "zod";
 
 // Define the tool metadata
@@ -15,22 +16,35 @@ type ToolParams = z.infer<typeof toolSchema>;
 
 // Define the tool handler
 const toolHandler = async (args: any) => {
-  const response = await getQuickbooksEmployee(args.params.id);
+  logToolRequest("get_employee", args);
+  const startTime = Date.now();
 
-  if (response.isError) {
+  try {
+    const response = await getQuickbooksEmployee(args.params.id);
+
+    if (response.isError) {
+      logToolResponse("get_employee", false, Date.now() - startTime);
+      logger.error(`Failed to get employee: ${response.error}`, undefined, { employeeId: args.params.id });
+      return {
+        content: [
+          { type: "text" as const, text: `Error getting employee: ${response.error}` },
+        ],
+      };
+    }
+
+    logToolResponse("get_employee", true, Date.now() - startTime);
+    logger.info("Employee retrieved successfully", { employeeId: args.params.id });
     return {
       content: [
-        { type: "text" as const, text: `Error getting employee: ${response.error}` },
+        { type: "text" as const, text: `Employee retrieved:` },
+        { type: "text" as const, text: JSON.stringify(response.result) },
       ],
     };
+  } catch (error) {
+    logToolResponse("get_employee", false, Date.now() - startTime);
+    logger.error("Failed to get employee", error, { employeeId: args.params?.id });
+    throw error;
   }
-
-  return {
-    content: [
-      { type: "text" as const, text: `Employee retrieved:` },
-      { type: "text" as const, text: JSON.stringify(response.result) },
-    ],
-  };
 };
 
 export const GetEmployeeTool: ToolDefinition<typeof toolSchema> = {

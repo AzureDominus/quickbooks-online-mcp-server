@@ -129,10 +129,12 @@ export async function getAttachments(
     const quickbooks = quickbooksClient.getQuickbooks();
 
     return new Promise((resolve) => {
-      const query = `SELECT * FROM Attachable WHERE AttachableRef.EntityRef.Type = '${entityType}' AND AttachableRef.EntityRef.value = '${entityId}'`;
+      // Pass raw WHERE clause as string - node-quickbooks appends it directly to the query
+      // Result: "select * from attachable where AttachableRef.EntityRef.value = '183' and AttachableRef.EntityRef.type = 'Purchase'"
+      const whereClause = `where AttachableRef.EntityRef.value = '${entityId}' and AttachableRef.EntityRef.type = '${entityType}'`;
       
       (quickbooks as any).findAttachables(
-        { query },
+        whereClause,
         (err: any, response: any) => {
           if (err) {
             resolve({
@@ -152,6 +154,101 @@ export async function getAttachments(
               })),
               isError: false,
               error: null,
+            });
+          }
+        }
+      );
+    });
+  } catch (error) {
+    return {
+      result: null,
+      isError: true,
+      error: formatError(error),
+    };
+  }
+}
+
+/**
+ * Download an attachment by ID to a local file
+ */
+export async function downloadAttachment(
+  attachmentId: string,
+  destinationPath: string
+): Promise<ToolResponse<{ filePath: string; size: number }>> {
+  try {
+    await quickbooksClient.authenticate();
+    const quickbooks = quickbooksClient.getQuickbooks();
+
+    // Resolve destination path
+    const resolvedPath = path.resolve(destinationPath.replace(/^~/, process.env.HOME || ""));
+    const destDir = path.dirname(resolvedPath);
+
+    // Ensure destination directory exists
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+
+    return new Promise((resolve) => {
+      // First, get the attachment metadata to get the download URL
+      (quickbooks as any).getAttachable(
+        attachmentId,
+        async (err: any, attachable: any) => {
+          if (err) {
+            resolve({
+              result: null,
+              isError: true,
+              error: formatError(err),
+            });
+            return;
+          }
+
+          const downloadUri = attachable?.TempDownloadUri;
+          if (!downloadUri) {
+            resolve({
+              result: null,
+              isError: true,
+              error: "No download URL available for this attachment",
+            });
+            return;
+          }
+
+          try {
+            // Download the file
+            const response = await fetch(downloadUri);
+            if (!response.ok) {
+              resolve({
+                result: null,
+                isError: true,
+                error: `Failed to download: ${response.status} ${response.statusText}`,
+              });
+              return;
+            }
+
+            const buffer = Buffer.from(await response.arrayBuffer());
+            
+            // Determine filename - use provided path or attachment's original filename
+            let finalPath = resolvedPath;
+            if (fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isDirectory()) {
+              // If destination is a directory, use original filename
+              const originalName = attachable.FileName || `attachment_${attachmentId}`;
+              finalPath = path.join(resolvedPath, originalName);
+            }
+
+            fs.writeFileSync(finalPath, buffer);
+
+            resolve({
+              result: {
+                filePath: finalPath,
+                size: buffer.length,
+              },
+              isError: false,
+              error: null,
+            });
+          } catch (downloadError) {
+            resolve({
+              result: null,
+              isError: true,
+              error: formatError(downloadError),
             });
           }
         }

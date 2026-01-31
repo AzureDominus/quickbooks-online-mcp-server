@@ -1,9 +1,27 @@
 import { createQuickbooksVendor } from "../handlers/create-quickbooks-vendor.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
+import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
 
 const toolName = "create-vendor";
-const toolDescription = "Create a vendor in QuickBooks Online.";
+const toolDescription = `Create a vendor in QuickBooks Online.
+
+REQUIRED FIELDS:
+- DisplayName: Unique display name for the vendor (required)
+
+OPTIONAL FIELDS:
+- GivenName: First name
+- FamilyName: Last name
+- CompanyName: Company/business name
+- PrimaryEmailAddr: Primary email address (object with Address field)
+- PrimaryPhone: Primary phone number (object with FreeFormNumber field)
+- BillAddr: Billing address (Line1, City, Country, CountrySubDivisionCode, PostalCode)
+
+IDEMPOTENCY:
+- Use idempotencyKey to prevent duplicate creation on retry
+- If the same key is used twice, the original vendor ID is returned`;
+
 const toolSchema = z.object({
   vendor: z.object({
     DisplayName: z.string(),
@@ -24,32 +42,81 @@ const toolSchema = z.object({
       PostalCode: z.string().optional(),
     }).optional(),
   }),
+  idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate vendor creation on retry"),
 });
 
 const toolHandler = async (args: { [x: string]: any }) => {
-  const response = await createQuickbooksVendor(args.vendor);
+  const startTime = Date.now();
+  const input = args.vendor;
+  const idempotencyKey = args.idempotencyKey as string | undefined;
+  
+  logToolRequest(toolName, { DisplayName: input?.DisplayName, idempotencyKey });
 
-  if (response.isError) {
+  try {
+    // Check idempotency first
+    const existingId = checkIdempotency(idempotencyKey);
+    if (existingId) {
+      logger.info('Idempotency hit - returning cached result', {
+        idempotencyKey,
+        existingId,
+      });
+      
+      logToolResponse(toolName, true, Date.now() - startTime);
+      return {
+        content: [
+          { type: "text" as const, text: `Vendor already exists (idempotent):` },
+          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+        ],
+      };
+    }
+
+    const response = await createQuickbooksVendor(input);
+
+    if (response.isError) {
+      logger.error('Failed to create vendor', new Error(response.error || 'Unknown error'));
+      logToolResponse(toolName, false, Date.now() - startTime);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error creating vendor: ${response.error}`,
+          },
+        ],
+      };
+    }
+
+    const vendor = response.result;
+
+    // Store idempotency result
+    if (vendor?.Id && idempotencyKey) {
+      storeIdempotency(idempotencyKey, vendor.Id, 'Vendor');
+      logger.info('Idempotency miss - stored new result', {
+        idempotencyKey,
+        vendorId: vendor.Id,
+      });
+    }
+
+    logger.info('Vendor created successfully', {
+      vendorId: vendor?.Id,
+      displayName: vendor?.DisplayName,
+    });
+    logToolResponse(toolName, true, Date.now() - startTime);
+
     return {
       content: [
-        {
-          type: "text" as const,
-          text: `Error creating vendor: ${response.error}`,
-        },
+        { type: "text" as const, text: `Vendor created successfully:` },
+        { type: "text" as const, text: JSON.stringify(vendor, null, 2) },
+      ],
+    };
+  } catch (error) {
+    logger.error('Unexpected error in create-vendor', error);
+    logToolResponse(toolName, false, Date.now() - startTime);
+    return {
+      content: [
+        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
       ],
     };
   }
-
-  const vendor = response.result;
-
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify(vendor),
-      }
-    ],
-  };
 };
 
 export const CreateVendorTool: ToolDefinition<typeof toolSchema> = {

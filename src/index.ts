@@ -69,6 +69,11 @@ import { SearchPurchasesTool } from "./tools/search-purchases.tool.js";
 // Attachment tools
 import { UploadAttachmentTool } from "./tools/upload-attachment.tool.js";
 import { GetAttachmentsTool } from "./tools/get-attachments.tool.js";
+import { DownloadAttachmentTool } from "./tools/download-attachment.tool.js";
+
+// Tax code tools
+import { GetTaxCodeTool } from "./tools/get-tax-code.tool.js";
+import { SearchTaxCodesTool } from "./tools/search-tax-codes.tool.js";
 
 const main = async () => {
   // Create an MCP server
@@ -163,6 +168,11 @@ const main = async () => {
   // Add tools for attachments
   RegisterTool(server, UploadAttachmentTool);
   RegisterTool(server, GetAttachmentsTool);
+  RegisterTool(server, DownloadAttachmentTool);
+
+  // Add tools for tax codes
+  RegisterTool(server, GetTaxCodeTool);
+  RegisterTool(server, SearchTaxCodesTool);
 
   // Start receiving messages on stdin and sending messages on stdout
   const transport = new StdioServerTransport();

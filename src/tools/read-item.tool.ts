@@ -1,5 +1,6 @@
 import { readQuickbooksItem } from "../handlers/read-quickbooks-item.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
+import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
 import { z } from "zod";
 
 const toolName = "read_item";
@@ -10,19 +11,32 @@ const toolSchema = z.object({
 });
 
 const toolHandler = async ({ params }: any) => {
-  const { item_id } = params;
-  const response = await readQuickbooksItem(item_id);
+  logToolRequest("read_item", params);
+  const startTime = Date.now();
 
-  if (response.isError) {
-    return { content: [{ type: "text" as const, text: `Error reading item ${item_id}: ${response.error}` }] };
+  try {
+    const { item_id } = params;
+    const response = await readQuickbooksItem(item_id);
+
+    if (response.isError) {
+      logToolResponse("read_item", false, Date.now() - startTime);
+      logger.error(`Failed to read item: ${response.error}`, undefined, { itemId: item_id });
+      return { content: [{ type: "text" as const, text: `Error reading item ${item_id}: ${response.error}` }] };
+    }
+
+    logToolResponse("read_item", true, Date.now() - startTime);
+    logger.info("Item read successfully", { itemId: item_id });
+    return {
+      content: [
+        { type: "text" as const, text: `Item details for ID ${item_id}:` },
+        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
+      ],
+    };
+  } catch (error) {
+    logToolResponse("read_item", false, Date.now() - startTime);
+    logger.error("Failed to read item", error, { itemId: params?.item_id });
+    throw error;
   }
-
-  return {
-    content: [
-      { type: "text" as const, text: `Item details for ID ${item_id}:` },
-      { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-    ],
-  };
 };
 
 export const ReadItemTool: ToolDefinition<typeof toolSchema> = {
