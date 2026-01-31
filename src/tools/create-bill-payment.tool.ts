@@ -3,6 +3,7 @@ import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
 import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
+import { CreateBillPaymentInputSchema } from "../types/qbo-schemas.js";
 
 // Define the tool metadata
 const toolName = "create_bill_payment";
@@ -14,7 +15,7 @@ IDEMPOTENCY:
 
 // Define the expected input schema for creating a bill payment
 const toolSchema = z.object({
-  billPayment: z.any(),
+  billPayment: CreateBillPaymentInputSchema,
   idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate creation"),
 });
 
