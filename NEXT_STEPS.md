@@ -4,7 +4,7 @@
 
 
 > **Last Updated:** 2026-01-31
-> **Status:** 🔄 IN PROGRESS - 17/30 Complete
+> **Status:** ✅ COMPLETE - 30/30 Complete
 
 ## Overview
 
@@ -91,16 +91,15 @@ Several tools use `args.params.` pattern which is WRONG - MCP SDK passes args di
 - **Fix:** Created and used CreateBillPaymentInputSchema
 
 ### Task 2.3: Fix search-accounts.tool.ts Loose Schemas
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 864cb3c)
 - **File:** `src/tools/search-accounts.tool.ts`
-- **Issue:** Multiple z.any() usages (lines 86, 109, 110, 168)
-- **Action:** Replace with typed schemas like other search tools
+- **Fix:** Replaced z.any() with typed z.union schemas
 
 ---
 
 ## Priority 3: Missing Logging in Tools
 
-## Priority 3: Missing Logging in Tools ✅ MOSTLY COMPLETE
+## Priority 3: Missing Logging in Tools ✅ COMPLETE
 
 ### Task 3.1: Add Logging to update-vendor.tool.ts
 - **Status:** ✅ Completed (commit 8898cf6)
@@ -111,8 +110,8 @@ Several tools use `args.params.` pattern which is WRONG - MCP SDK passes args di
 - **Fix:** Added logging in args fix
 
 ### Task 3.3: Add Logging to update-bill.tool.ts
-- **Status:** 🔴 Not Started
-- **Issue:** No logging, also missing SyncToken in schema
+- **Status:** ✅ Completed (commit 864cb3c)
+- **Fix:** Added logging before/after operations, added SyncToken to schema
 
 ### Task 3.4: Add Logging to download/upload attachment tools
 - **Status:** ✅ Completed (commit 6648e90)
@@ -135,58 +134,57 @@ Several tools use `args.params.` pattern which is WRONG - MCP SDK passes args di
 - **Fix:** Added search filter tests for purchases and invoices
 
 ### Task 4.4: Add Integration Tests for Attachments
-- **Status:** 🔴 Not Started
-- **Issue:** Attachment upload/download not tested
-- **Action:** Upload a test file, verify attachment exists, download it
+- **Status:** ✅ Completed (commit b81f30c)
+- **Fix:** Added upload, get, and download attachment tests with cleanup
 
 ---
 
-## Priority 5: Advanced Search Enhancements
+## Priority 5: Advanced Search Enhancements ✅ COMPLETE
 
 ### Task 5.1: Add Advanced Search to Accounts
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit c42c278)
 - **File:** `src/tools/search-accounts.tool.ts`
-- **Action:** Add filtering by AccountType, Classification, Balance ranges
+- **Fix:** Added AccountType, Classification, Balance ranges, Active, Name filters
 
 ### Task 5.2: Add Advanced Search to Employees
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit c42c278)
 - **File:** `src/tools/search-employees.tool.ts`
-- **Action:** Add filtering by Active status, HiredDate ranges
+- **Fix:** Added Active, GivenName, FamilyName, DisplayName, HiredDate/ReleasedDate ranges, Email filters
 
 ### Task 5.3: Add Advanced Search to Bill Payments
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit c42c278)
 - **File:** `src/tools/search-bill-payments.tool.ts`
-- **Action:** Add date range, amount range filters
+- **Fix:** Added TxnDate ranges, TotalAmt ranges, VendorRef, PayType, DocNumber filters
 
 ### Task 5.4: Add Advanced Search to Journal Entries
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 07c16da)
 - **File:** `src/tools/search-journal-entries.tool.ts`
-- **Action:** Add date range, amount filters
+- **Fix:** Added TxnDate ranges, TotalAmt ranges, DocNumber, Adjustment filters
 
 ### Task 5.5: Add Advanced Search to Items
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 07c16da)
 - **File:** `src/tools/search-items.tool.ts`
-- **Action:** Add filtering by Type, Active status, UnitPrice range
+- **Fix:** Added Type, Active, UnitPrice ranges, Name filters
 
 ---
 
-## Priority 6: Missing Idempotency
+## Priority 6: Missing Idempotency ✅ COMPLETE
 
 ### Task 6.1: Add Idempotency to create-account.tool.ts
-- **Status:** 🔴 Not Started
-- **Issue:** Account creation lacks idempotency
+- **Status:** ✅ Completed (commit 27600a8)
+- **Fix:** Added requestId parameter, idempotency check/store
 
 ### Task 6.2: Add Idempotency to create-employee.tool.ts
-- **Status:** 🔴 Not Started
-- **Issue:** Employee creation lacks idempotency
+- **Status:** ✅ Completed (commit 27600a8)
+- **Fix:** Added requestId parameter, idempotency check/store
 
 ### Task 6.3: Add Idempotency to create-item.tool.ts
-- **Status:** 🔴 Not Started
-- **Issue:** Item creation lacks idempotency
+- **Status:** ✅ Completed (commit 27600a8)
+- **Fix:** Added requestId parameter, idempotency check/store
 
 ### Task 6.4: Add Idempotency to create-journal-entry.tool.ts
-- **Status:** 🔴 Not Started
-- **Issue:** Journal entry creation lacks idempotency
+- **Status:** ✅ Completed (commit 27600a8)
+- **Fix:** Added requestId parameter, idempotency check/store
 
 ---
 
@@ -195,12 +193,12 @@ Several tools use `args.params.` pattern which is WRONG - MCP SDK passes args di
 | Priority | Total Tasks | Completed | In Progress | Not Started |
 |----------|-------------|-----------|-------------|-------------|
 | P1 - Args Bugs | 10 | 10 | 0 | 0 |
-| P2 - z.any() | 3 | 2 | 0 | 1 |
-| P3 - Logging | 4 | 3 | 0 | 1 |
-| P4 - Integration Tests | 4 | 3 | 0 | 1 |
-| P5 - Search | 5 | 0 | 0 | 5 |
-| P6 - Idempotency | 4 | 0 | 0 | 4 |
-| **TOTAL** | **30** | **18** | **0** | **12** |
+| P2 - z.any() | 3 | 3 | 0 | 0 |
+| P3 - Logging | 4 | 4 | 0 | 0 |
+| P4 - Integration Tests | 4 | 4 | 0 | 0 |
+| P5 - Search | 5 | 5 | 0 | 0 |
+| P6 - Idempotency | 4 | 4 | 0 | 0 |
+| **TOTAL** | **30** | **30** | **0** | **0** |
 
 ---
 
@@ -212,6 +210,11 @@ Several tools use `args.params.` pattern which is WRONG - MCP SDK passes args di
 | 1.6-1.10 | Subagent-23 | 2026-01-31 | ✅ Complete | Commit 6648e90 |
 | 2.1-2.2 | Subagent-24 | 2026-01-31 | ✅ Complete | Commit 5df7950 |
 | 4.1-4.3 | Subagent-25 | 2026-01-31 | ✅ Complete | Commit f79e66f, 96 tests |
+| 2.3, 3.3 | Subagent-26 | 2026-01-31 | ✅ Complete | Commit 864cb3c |
+| 4.4 | Subagent-27 | 2026-01-31 | ✅ Complete | Commit b81f30c, 101 tests |
+| 5.1-5.3 | Subagent-28 | 2026-01-31 | ✅ Complete | Commit c42c278 |
+| 5.4-5.5 | Subagent-29 | 2026-01-31 | ✅ Complete | Commit 07c16da |
+| 6.1-6.4 | Subagent-30 | 2026-01-31 | ✅ Complete | Commit 27600a8 |
 
 ---
 
