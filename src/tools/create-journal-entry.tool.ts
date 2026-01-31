@@ -2,11 +2,16 @@ import { createQuickbooksJournalEntry } from "../handlers/create-quickbooks-jour
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 import { CreateJournalEntryInputSchema, type CreateJournalEntryInput } from "../types/qbo-schemas.js";
+import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
 import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
 
 // Define the tool metadata
 const toolName = "create_journal_entry";
 const toolDescription = `Create a journal entry in QuickBooks Online.
+
+IDEMPOTENCY:
+- Use idempotencyKey to prevent duplicate creation on retry
+- If the same key is used twice, the original journal entry ID is returned
 
 Journal entries are double-entry transactions that must balance (debits = credits).
 
@@ -58,6 +63,7 @@ Example - Record a $500 expense paid from checking:
 // Define the expected input schema for creating a journal entry
 const toolSchema = z.object({
   journalEntry: CreateJournalEntryInputSchema,
+  idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate journal entry creation on retry"),
 });
 
 // Define the tool handler
@@ -71,6 +77,23 @@ const toolHandler = async (args: { [x: string]: any }) => {
   });
 
   try {
+    // Check idempotency first
+    const existingId = checkIdempotency(args.idempotencyKey);
+    if (existingId) {
+      logger.info('Idempotency hit - returning cached result', {
+        idempotencyKey: args.idempotencyKey,
+        existingId,
+      });
+      
+      logToolResponse(toolName, true, Date.now() - startTime);
+      return {
+        content: [
+          { type: "text" as const, text: `Journal entry already exists (idempotent):` },
+          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+        ],
+      };
+    }
+
     // Validate that debits equal credits
     let totalDebits = 0;
     let totalCredits = 0;
@@ -100,6 +123,11 @@ const toolHandler = async (args: { [x: string]: any }) => {
           { type: "text" as const, text: `Error creating journal entry: ${response.error}` },
         ],
       };
+    }
+
+    // Store idempotency result
+    if (response.result?.Id) {
+      storeIdempotency(args.idempotencyKey, response.result.Id, 'JournalEntry');
     }
 
     logger.info('Journal entry created successfully', {
