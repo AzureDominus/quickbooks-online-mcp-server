@@ -12,15 +12,15 @@ const toolHandler = async (args: any) => {
   const startTime = Date.now();
 
   try {
-    const response = await getQuickbooksEstimate(args.params.id);
+    const response = await getQuickbooksEstimate(args.id);
     if (response.isError) {
       logToolResponse("get_estimate", false, Date.now() - startTime);
-      logger.error(`Failed to get estimate: ${response.error}`, undefined, { estimateId: args.params.id });
+      logger.error(`Failed to get estimate: ${response.error}`, undefined, { estimateId: args.id });
       return { content: [{ type: "text" as const, text: `Error getting estimate: ${response.error}` }] };
     }
 
     logToolResponse("get_estimate", true, Date.now() - startTime);
-    logger.info("Estimate retrieved successfully", { estimateId: args.params.id });
+    logger.info("Estimate retrieved successfully", { estimateId: args.id });
     return {
       content: [
         { type: "text" as const, text: `Estimate:` },
@@ -29,7 +29,7 @@ const toolHandler = async (args: any) => {
     };
   } catch (error) {
     logToolResponse("get_estimate", false, Date.now() - startTime);
-    logger.error("Failed to get estimate", error, { estimateId: args.params?.id });
+    logger.error("Failed to get estimate", error, { estimateId: args.id });
     throw error;
   }
 };

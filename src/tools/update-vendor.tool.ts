@@ -1,5 +1,6 @@
 import { updateQuickbooksVendor } from "../handlers/update-quickbooks-vendor.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
+import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
 import { z } from "zod";
 
 const toolName = "update-vendor";
@@ -29,29 +30,42 @@ const toolSchema = z.object({
 });
 
 const toolHandler = async (args: { [x: string]: any }) => {
-  const response = await updateQuickbooksVendor(args.params.vendor);
+  logToolRequest("update_vendor", args);
+  const startTime = Date.now();
 
-  if (response.isError) {
+  try {
+    const response = await updateQuickbooksVendor(args.vendor);
+
+    if (response.isError) {
+      logToolResponse("update_vendor", false, Date.now() - startTime);
+      logger.error(`Failed to update vendor: ${response.error}`, undefined, { vendorId: args.vendor?.Id });
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error updating vendor: ${response.error}`,
+          },
+        ],
+      };
+    }
+
+    const vendor = response.result;
+
+    logToolResponse("update_vendor", true, Date.now() - startTime);
+    logger.info("Vendor updated successfully", { vendorId: args.vendor?.Id });
     return {
       content: [
         {
           type: "text" as const,
-          text: `Error updating vendor: ${response.error}`,
-        },
+          text: JSON.stringify(vendor),
+        }
       ],
     };
+  } catch (error) {
+    logToolResponse("update_vendor", false, Date.now() - startTime);
+    logger.error("Failed to update vendor", error, { vendorId: args.vendor?.Id });
+    throw error;
   }
-
-  const vendor = response.result;
-
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify(vendor),
-      }
-    ],
-  };
 };
 
 export const UpdateVendorTool: ToolDefinition<typeof toolSchema> = {

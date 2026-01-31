@@ -20,11 +20,11 @@ const toolHandler = async (args: any) => {
   const startTime = Date.now();
 
   try {
-    const response = await getQuickbooksEmployee(args.params.id);
+    const response = await getQuickbooksEmployee(args.id);
 
     if (response.isError) {
       logToolResponse("get_employee", false, Date.now() - startTime);
-      logger.error(`Failed to get employee: ${response.error}`, undefined, { employeeId: args.params.id });
+      logger.error(`Failed to get employee: ${response.error}`, undefined, { employeeId: args.id });
       return {
         content: [
           { type: "text" as const, text: `Error getting employee: ${response.error}` },
@@ -33,7 +33,7 @@ const toolHandler = async (args: any) => {
     }
 
     logToolResponse("get_employee", true, Date.now() - startTime);
-    logger.info("Employee retrieved successfully", { employeeId: args.params.id });
+    logger.info("Employee retrieved successfully", { employeeId: args.id });
     return {
       content: [
         { type: "text" as const, text: `Employee retrieved:` },
@@ -42,7 +42,7 @@ const toolHandler = async (args: any) => {
     };
   } catch (error) {
     logToolResponse("get_employee", false, Date.now() - startTime);
-    logger.error("Failed to get employee", error, { employeeId: args.params?.id });
+    logger.error("Failed to get employee", error, { employeeId: args.id });
     throw error;
   }
 };

@@ -20,11 +20,11 @@ const toolHandler = async (args: any) => {
   const startTime = Date.now();
 
   try {
-    const response = await getQuickbooksBillPayment(args.params.id);
+    const response = await getQuickbooksBillPayment(args.id);
 
     if (response.isError) {
       logToolResponse("get_bill_payment", false, Date.now() - startTime);
-      logger.error(`Failed to get bill payment: ${response.error}`, undefined, { billPaymentId: args.params.id });
+      logger.error(`Failed to get bill payment: ${response.error}`, undefined, { billPaymentId: args.id });
       return {
         content: [
           { type: "text" as const, text: `Error getting bill payment: ${response.error}` },
@@ -33,7 +33,7 @@ const toolHandler = async (args: any) => {
     }
 
     logToolResponse("get_bill_payment", true, Date.now() - startTime);
-    logger.info("Bill payment retrieved successfully", { billPaymentId: args.params.id });
+    logger.info("Bill payment retrieved successfully", { billPaymentId: args.id });
     return {
       content: [
         { type: "text" as const, text: `Bill payment retrieved:` },
@@ -42,7 +42,7 @@ const toolHandler = async (args: any) => {
     };
   } catch (error) {
     logToolResponse("get_bill_payment", false, Date.now() - startTime);
-    logger.error("Failed to get bill payment", error, { billPaymentId: args.params.id });
+    logger.error("Failed to get bill payment", error, { billPaymentId: args.id });
     throw error;
   }
 };
