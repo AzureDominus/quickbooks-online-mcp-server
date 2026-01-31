@@ -1,7 +1,7 @@
 # QuickBooks MCP Server - Next Steps Tracking (Phase 2)
 
 > **Last Updated:** 2026-01-31
-> **Status:** 🔄 NEW PHASE - Code Review Findings
+> **Status:** 🔄 IN PROGRESS - 17/30 Complete
 
 ## Overview
 
@@ -19,79 +19,73 @@ This document tracks Phase 2 improvements based on comprehensive code review. Th
 
 ---
 
-## Priority 1: Critical Bugs - Args Pattern Inconsistencies
+## Priority 1: Critical Bugs - Args Pattern Inconsistencies ✅ COMPLETE
 
 Several tools use `args.params.` pattern which is WRONG - MCP SDK passes args directly.
 
 ### Task 1.1: Fix update-vendor.tool.ts Args Pattern
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 8898cf6)
 - **File:** `src/tools/update-vendor.tool.ts`
-- **Issue:** Uses `args.params.vendor` instead of `args.vendor`
-- **Also Missing:** Logging, proper error handling
+- **Fix:** Changed `args.params.vendor` → `args.vendor`, added logging
 
 ### Task 1.2: Fix delete-vendor.tool.ts Args Pattern
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 8898cf6)
 - **File:** `src/tools/delete-vendor.tool.ts`
-- **Issue:** Uses `args.params.vendor` instead of `args.vendor`
-- **Also Missing:** Logging
+- **Fix:** Changed `args.params.vendor` → `args.vendor`, added logging
 
 ### Task 1.3: Fix get-employee.tool.ts Args Pattern
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 8898cf6)
 - **File:** `src/tools/get-employee.tool.ts`
-- **Issue:** Uses `args.params.id` instead of `args.id`
+- **Fix:** Changed `args.params.id` → `args.id`
 
 ### Task 1.4: Fix get-bill-payment.tool.ts Args Pattern
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 8898cf6)
 - **File:** `src/tools/get-bill-payment.tool.ts`
-- **Issue:** Uses `args.params.id` instead of `args.id`
+- **Fix:** Changed `args.params.id` → `args.id`
 
 ### Task 1.5: Fix get-estimate.tool.ts Args Pattern
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 8898cf6)
 - **File:** `src/tools/get-estimate.tool.ts`
-- **Issue:** Uses `args.params.id` instead of `args.id`
+- **Fix:** Changed `args.params.id` → `args.id`
 
 ### Task 1.6: Fix get-journal-entry.tool.ts Args Pattern
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 6648e90)
 - **File:** `src/tools/get-journal-entry.tool.ts`
-- **Issue:** Uses `args.params.id` instead of `args.id`
+- **Fix:** Changed `args.params.id` → `args.id`
 
 ### Task 1.7: Fix get-purchase.tool.ts Args Pattern
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 6648e90)
 - **File:** `src/tools/get-purchase.tool.ts`
-- **Issue:** Uses `args.params.id` instead of `args.id`
+- **Fix:** Changed `args.params.id` → `args.id`
 
 ### Task 1.8: Fix get-tax-code.tool.ts Args Pattern
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 6648e90)
 - **File:** `src/tools/get-tax-code.tool.ts`
-- **Issue:** Uses `args.params.id` instead of `args.id`
+- **Fix:** Changed `args.params.id` → `args.id`, added logging
 
 ### Task 1.9: Fix create-employee.tool.ts Args Pattern
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 6648e90)
 - **File:** `src/tools/create-employee.tool.ts`
-- **Issue:** Uses `args.params.employee` instead of `args.employee`
-- **Also:** Still uses z.any() for employee schema
+- **Fix:** Changed `args.params.employee` → `args.employee`
 
 ### Task 1.10: Fix download/upload attachment tools
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 6648e90)
 - **Files:** `src/tools/download-attachment.tool.ts`, `src/tools/upload-attachment.tool.ts`
-- **Issue:** Uses `{ params }` destructuring pattern instead of direct args
-- **Also Missing:** Logging
+- **Fix:** Changed `{ params }` → direct args, added logging
 
 ---
 
-## Priority 2: Remaining z.any() Schemas
+## Priority 2: Remaining z.any() Schemas ✅ COMPLETE
 
 ### Task 2.1: Replace z.any() in create-employee.tool.ts
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 5df7950)
 - **File:** `src/tools/create-employee.tool.ts`
-- **Issue:** Uses `z.any()` for employee parameter
-- **Action:** Create CreateEmployeeInputSchema in qbo-schemas.ts
+- **Fix:** Created and used CreateEmployeeInputSchema
 
 ### Task 2.2: Replace z.any() in create-bill-payment.tool.ts
-- **Status:** 🔴 Not Started
+- **Status:** ✅ Completed (commit 5df7950)
 - **File:** `src/tools/create-bill-payment.tool.ts`
-- **Issue:** Uses `z.any()` for billPayment parameter (line 17)
-- **Action:** Create CreateBillPaymentInputSchema in qbo-schemas.ts
+- **Fix:** Created and used CreateBillPaymentInputSchema
 
 ### Task 2.3: Fix search-accounts.tool.ts Loose Schemas
 - **Status:** 🔴 Not Started
@@ -103,42 +97,39 @@ Several tools use `args.params.` pattern which is WRONG - MCP SDK passes args di
 
 ## Priority 3: Missing Logging in Tools
 
+## Priority 3: Missing Logging in Tools ✅ MOSTLY COMPLETE
+
 ### Task 3.1: Add Logging to update-vendor.tool.ts
-- **Status:** 🔴 Not Started
-- **Issue:** No logging imports or calls
+- **Status:** ✅ Completed (commit 8898cf6)
+- **Fix:** Added logging in args fix
 
 ### Task 3.2: Add Logging to delete-vendor.tool.ts
-- **Status:** 🔴 Not Started
-- **Issue:** No logging imports or calls
+- **Status:** ✅ Completed (commit 8898cf6)
+- **Fix:** Added logging in args fix
 
 ### Task 3.3: Add Logging to update-bill.tool.ts
 - **Status:** 🔴 Not Started
 - **Issue:** No logging, also missing SyncToken in schema
 
 ### Task 3.4: Add Logging to download/upload attachment tools
-- **Status:** 🔴 Not Started
-- **Files:** download-attachment.tool.ts, upload-attachment.tool.ts
-- **Issue:** No logging
+- **Status:** ✅ Completed (commit 6648e90)
+- **Fix:** Added logging in args fix
 
 ---
 
-## Priority 4: Integration Tests for Real Sandbox
+## Priority 4: Integration Tests for Real Sandbox ✅ COMPLETE
 
 ### Task 4.1: Add Real API Integration Tests for Create Operations
-- **Status:** 🔴 Not Started
-- **Issue:** Most "integration" tests are actually unit tests with mocks
-- **Action:** Add tests that actually create/read/delete via sandbox API
-- **Entities:** Invoice, Bill, BillPayment, JournalEntry
+- **Status:** ✅ Completed (commit f79e66f)
+- **Fix:** Added invoice and bill lifecycle tests against real sandbox
 
 ### Task 4.2: Add Integration Tests for Idempotency
-- **Status:** 🔴 Not Started
-- **Issue:** Idempotency isn't tested against real API
-- **Action:** Test that same key returns same entity without creating duplicate
+- **Status:** ✅ Completed (commit f79e66f)
+- **Fix:** Added test that verifies same idempotency key returns same entity
 
 ### Task 4.3: Add Integration Tests for Advanced Search
-- **Status:** 🔴 Not Started
-- **Issue:** Advanced search filters not tested with real data
-- **Action:** Create entities, then search with filters, verify results
+- **Status:** ✅ Completed (commit f79e66f)
+- **Fix:** Added search filter tests for purchases and invoices
 
 ### Task 4.4: Add Integration Tests for Attachments
 - **Status:** 🔴 Not Started
@@ -200,13 +191,13 @@ Several tools use `args.params.` pattern which is WRONG - MCP SDK passes args di
 
 | Priority | Total Tasks | Completed | In Progress | Not Started |
 |----------|-------------|-----------|-------------|-------------|
-| P1 - Args Bugs | 10 | 0 | 0 | 10 |
-| P2 - z.any() | 3 | 0 | 0 | 3 |
-| P3 - Logging | 4 | 0 | 0 | 4 |
-| P4 - Integration Tests | 4 | 0 | 0 | 4 |
+| P1 - Args Bugs | 10 | 10 | 0 | 0 |
+| P2 - z.any() | 3 | 2 | 0 | 1 |
+| P3 - Logging | 4 | 3 | 0 | 1 |
+| P4 - Integration Tests | 4 | 3 | 0 | 1 |
 | P5 - Search | 5 | 0 | 0 | 5 |
 | P6 - Idempotency | 4 | 0 | 0 | 4 |
-| **TOTAL** | **30** | **0** | **0** | **30** |
+| **TOTAL** | **30** | **18** | **0** | **12** |
 
 ---
 
@@ -214,6 +205,10 @@ Several tools use `args.params.` pattern which is WRONG - MCP SDK passes args di
 
 | Task | Agent | Started | Status | Notes |
 |------|-------|---------|--------|-------|
+| 1.1-1.5 | Subagent-22 | 2026-01-31 | ✅ Complete | Commit 8898cf6 |
+| 1.6-1.10 | Subagent-23 | 2026-01-31 | ✅ Complete | Commit 6648e90 |
+| 2.1-2.2 | Subagent-24 | 2026-01-31 | ✅ Complete | Commit 5df7950 |
+| 4.1-4.3 | Subagent-25 | 2026-01-31 | ✅ Complete | Commit f79e66f, 96 tests |
 
 ---
 
