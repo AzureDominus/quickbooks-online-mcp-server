@@ -1,7 +1,7 @@
-import { searchQuickbooksEmployees } from "../handlers/search-quickbooks-employees.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { searchQuickbooksEmployees } from '../handlers/search-quickbooks-employees.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 import {
   buildDateRangeFilter,
   buildLikeFilter,
@@ -9,11 +9,11 @@ import {
   buildStringFilter,
   mergeFilters,
   SearchFilter,
-} from "../helpers/search-filters.js";
-import { createMCPErrorResponse } from "../helpers/tool-error.js";
+} from '../helpers/search-filters.js';
+import { createMCPErrorResponse } from '../helpers/tool-error.js';
 
 // Define the tool metadata
-const toolName = "search_employees";
+const toolName = 'search_employees';
 const toolDescription = `Search employees in QuickBooks Online with advanced filtering.
 
 Employees are individuals who work for the company and may receive paychecks.
@@ -79,98 +79,103 @@ Example - Find employees by last name:
 
 // Allowed fields for Employee entity filtering
 const ALLOWED_FILTER_FIELDS = [
-  "Id",
-  "GivenName",
-  "MiddleName",
-  "FamilyName",
-  "DisplayName",
-  "PrintOnCheckName",
-  "Active",
-  "PrimaryPhone",
-  "Mobile",
-  "PrimaryEmailAddr",
-  "HiredDate",
-  "ReleasedDate",
-  "MetaData.CreateTime",
-  "MetaData.LastUpdatedTime",
+  'Id',
+  'GivenName',
+  'MiddleName',
+  'FamilyName',
+  'DisplayName',
+  'PrintOnCheckName',
+  'Active',
+  'PrimaryPhone',
+  'Mobile',
+  'PrimaryEmailAddr',
+  'HiredDate',
+  'ReleasedDate',
+  'MetaData.CreateTime',
+  'MetaData.LastUpdatedTime',
 ] as const;
 
 const ALLOWED_SORT_FIELDS = [
-  "Id",
-  "GivenName",
-  "FamilyName",
-  "DisplayName",
-  "HiredDate",
-  "MetaData.CreateTime",
-  "MetaData.LastUpdatedTime",
+  'Id',
+  'GivenName',
+  'FamilyName',
+  'DisplayName',
+  'HiredDate',
+  'MetaData.CreateTime',
+  'MetaData.LastUpdatedTime',
 ] as const;
 
 // Criterion schema for typed search criteria
 const CriterionSchema = z.object({
-  field: z.enum(ALLOWED_FILTER_FIELDS).describe(
-    `Field to filter on. Allowed: ${ALLOWED_FILTER_FIELDS.join(", ")}`
-  ),
-  value: z.union([z.string(), z.boolean()]).describe("Value to match"),
-  operator: z.enum(["=", "<", ">", "<=", ">=", "LIKE", "IN"])
+  field: z
+    .enum(ALLOWED_FILTER_FIELDS)
+    .describe(`Field to filter on. Allowed: ${ALLOWED_FILTER_FIELDS.join(', ')}`),
+  value: z.union([z.string(), z.boolean()]).describe('Value to match'),
+  operator: z
+    .enum(['=', '<', '>', '<=', '>=', 'LIKE', 'IN'])
     .optional()
-    .default("=")
-    .describe("Comparison operator (default: =)"),
+    .default('=')
+    .describe('Comparison operator (default: =)'),
 });
 
 // Define the expected input schema for searching employees
 const toolSchema = z.object({
   // Convenience filter parameters
-  active: z.boolean()
+  active: z.boolean().optional().describe('Filter by active status (true/false)'),
+  givenName: z
+    .string()
     .optional()
-    .describe("Filter by active status (true/false)"),
-  givenName: z.string()
+    .describe('Filter by first name (use % as wildcard for partial match)'),
+  familyName: z
+    .string()
     .optional()
-    .describe("Filter by first name (use % as wildcard for partial match)"),
-  familyName: z.string()
+    .describe('Filter by last name (use % as wildcard for partial match)'),
+  displayName: z
+    .string()
     .optional()
-    .describe("Filter by last name (use % as wildcard for partial match)"),
-  displayName: z.string()
+    .describe('Filter by display name (use % as wildcard for partial match)'),
+  hiredDateFrom: z
+    .string()
     .optional()
-    .describe("Filter by display name (use % as wildcard for partial match)"),
-  hiredDateFrom: z.string()
+    .describe('Filter employees hired on or after this date (YYYY-MM-DD)'),
+  hiredDateTo: z
+    .string()
     .optional()
-    .describe("Filter employees hired on or after this date (YYYY-MM-DD)"),
-  hiredDateTo: z.string()
+    .describe('Filter employees hired on or before this date (YYYY-MM-DD)'),
+  releasedDateFrom: z
+    .string()
     .optional()
-    .describe("Filter employees hired on or before this date (YYYY-MM-DD)"),
-  releasedDateFrom: z.string()
+    .describe('Filter employees released on or after this date (YYYY-MM-DD)'),
+  releasedDateTo: z
+    .string()
     .optional()
-    .describe("Filter employees released on or after this date (YYYY-MM-DD)"),
-  releasedDateTo: z.string()
-    .optional()
-    .describe("Filter employees released on or before this date (YYYY-MM-DD)"),
-  email: z.string()
-    .optional()
-    .describe("Filter by primary email address"),
+    .describe('Filter employees released on or before this date (YYYY-MM-DD)'),
+  email: z.string().optional().describe('Filter by primary email address'),
   // Advanced criteria for complex queries
-  criteria: z.array(CriterionSchema)
+  criteria: z
+    .array(CriterionSchema)
     .optional()
-    .describe("Advanced filter criteria for complex queries"),
+    .describe('Advanced filter criteria for complex queries'),
   // Sorting
-  asc: z.enum(ALLOWED_SORT_FIELDS)
+  asc: z
+    .enum(ALLOWED_SORT_FIELDS)
     .optional()
-    .describe(`Sort ascending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
-  desc: z.enum(ALLOWED_SORT_FIELDS)
+    .describe(`Sort ascending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(', ')}`),
+  desc: z
+    .enum(ALLOWED_SORT_FIELDS)
     .optional()
-    .describe(`Sort descending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
+    .describe(`Sort descending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(', ')}`),
   // Pagination
-  limit: z.number().int().min(1).max(1000)
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(1000)
     .optional()
-    .describe("Maximum results to return (1-1000)"),
-  offset: z.number().int().min(0)
-    .optional()
-    .describe("Number of records to skip for pagination"),
-  count: z.boolean()
-    .optional()
-    .describe("If true, only return count of matching records"),
-  fetchAll: z.boolean()
-    .optional()
-    .describe("If true, fetch all matching records (may be slow)"),
+    .describe('Maximum results to return (1-1000)'),
+  offset: z.number().int().min(0).optional().describe('Number of records to skip for pagination'),
+  count: z.boolean().optional().describe('If true, only return count of matching records'),
+  fetchAll: z.boolean().optional().describe('If true, fetch all matching records (may be slow)'),
 });
 
 type ToolParams = z.infer<typeof toolSchema>;
@@ -181,16 +186,16 @@ type ToolParams = z.infer<typeof toolSchema>;
 function buildEmployeeSearchFilters(input: ToolParams): SearchFilter[] {
   return mergeFilters(
     // Active status filter
-    buildEqualityFilter("Active", input.active),
+    buildEqualityFilter('Active', input.active),
     // Name filters with LIKE support
-    buildLikeFilter("GivenName", input.givenName),
-    buildLikeFilter("FamilyName", input.familyName),
-    buildLikeFilter("DisplayName", input.displayName),
+    buildLikeFilter('GivenName', input.givenName),
+    buildLikeFilter('FamilyName', input.familyName),
+    buildLikeFilter('DisplayName', input.displayName),
     // Date range filters
-    buildDateRangeFilter("HiredDate", input.hiredDateFrom, input.hiredDateTo),
-    buildDateRangeFilter("ReleasedDate", input.releasedDateFrom, input.releasedDateTo),
+    buildDateRangeFilter('HiredDate', input.hiredDateFrom, input.hiredDateTo),
+    buildDateRangeFilter('ReleasedDate', input.releasedDateFrom, input.releasedDateTo),
     // Email filter
-    buildStringFilter("PrimaryEmailAddr", input.email)
+    buildStringFilter('PrimaryEmailAddr', input.email)
   );
 }
 
@@ -199,22 +204,22 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
   const startTime = Date.now();
   // Handle both wrapped params and direct args
   const input = args.params ?? args;
-  
+
   logToolRequest(toolName, input);
 
   try {
     // Build criteria from convenience parameters
     const convenienceFilters = buildEmployeeSearchFilters(input);
-    
+
     // Merge with any advanced criteria if provided
     let searchParams: any;
-    
+
     if (input.criteria && input.criteria.length > 0) {
       // User provided advanced criteria - merge with convenience filters
-      const advancedFilters = input.criteria.map(c => ({
+      const advancedFilters = input.criteria.map((c) => ({
         field: c.field,
         value: c.value,
-        operator: c.operator || "=",
+        operator: c.operator || '=',
       }));
       searchParams = {
         filters: [...convenienceFilters, ...advancedFilters],
@@ -247,16 +252,14 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
         fetchAll: input.fetchAll,
       };
     }
-    
+
     const response = await searchQuickbooksEmployees(searchParams);
 
     if (response.isError) {
       logger.error('Failed to search employees', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error searching employees: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error searching employees: ${response.error}` }],
       };
     }
 
@@ -264,15 +267,14 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
     if (input.count && typeof response.result === 'number') {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Found ${response.result} matching employees` },
-        ],
+        content: [{ type: 'text' as const, text: JSON.stringify({ count: response.result }) }],
       };
     }
 
-    const results = response.result?.QueryResponse?.Employee || response.result || [];
+    // Handler now returns the extracted array directly
+    const results = response.result || [];
     const resultArray = Array.isArray(results) ? results : [results];
-    
+
     logger.info('Employee search completed', {
       resultCount: resultArray.length,
       limit: input.limit,
@@ -303,10 +305,7 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
     };
 
     return {
-      content: [
-        { type: "text" as const, text: `Found ${resultArray.length} employees:` },
-        { type: "text" as const, text: JSON.stringify(responseData, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(responseData) }],
     };
   } catch (error) {
     logger.error('Unexpected error in search_employees', error);
@@ -320,4 +319,4 @@ export const SearchEmployeesTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

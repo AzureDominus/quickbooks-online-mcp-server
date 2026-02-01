@@ -33,10 +33,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse('read_item', true, Date.now() - startTime);
     logger.info('Item read successfully', { itemId: item_id });
     return {
-      content: [
-        { type: 'text' as const, text: `Item details for ID ${item_id}:` },
-        { type: 'text' as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logToolResponse('read_item', false, Date.now() - startTime);

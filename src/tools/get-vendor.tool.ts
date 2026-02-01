@@ -40,12 +40,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse('get_vendor', true, Date.now() - startTime);
     logger.info('Vendor retrieved successfully', { vendorId: args.id });
     return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify(vendor),
-        },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(vendor) }],
     };
   } catch (error) {
     logToolResponse('get_vendor', false, Date.now() - startTime);

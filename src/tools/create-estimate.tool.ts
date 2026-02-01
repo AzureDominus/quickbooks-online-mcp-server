@@ -1,11 +1,11 @@
-import { createQuickbooksEstimate } from "../handlers/create-quickbooks-estimate.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { CreateEstimateInputSchema } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
-import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
+import { createQuickbooksEstimate } from '../handlers/create-quickbooks-estimate.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { CreateEstimateInputSchema } from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
 
-const toolName = "create_estimate";
+const toolName = 'create_estimate';
 const toolDescription = `Create an estimate (quote) in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -60,9 +60,9 @@ EXAMPLE:
   "TxnStatus": "Pending"
 }`;
 
-const toolSchema = z.object({ 
+const toolSchema = z.object({
   estimate: CreateEstimateInputSchema,
-  idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate creation"),
+  idempotencyKey: z.string().optional().describe('Optional key to prevent duplicate creation'),
 });
 
 // MCP SDK passes parsed args directly
@@ -70,9 +70,9 @@ const toolHandler = async (args: { [x: string]: unknown }) => {
   const startTime = Date.now();
   const input = args.estimate as z.infer<typeof CreateEstimateInputSchema>;
   const idempotencyKey = args.idempotencyKey as string | undefined;
-  
-  logToolRequest(toolName, { 
-    CustomerRef: input.CustomerRef, 
+
+  logToolRequest(toolName, {
+    CustomerRef: input.CustomerRef,
     lineCount: input.Line?.length || 0,
     hasIdempotencyKey: !!idempotencyKey,
   });
@@ -85,12 +85,11 @@ const toolHandler = async (args: { [x: string]: unknown }) => {
         idempotencyKey,
         existingId,
       });
-      
+
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Estimate already exists (idempotent):` },
-          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
     }
@@ -100,36 +99,40 @@ const toolHandler = async (args: { [x: string]: unknown }) => {
     }
 
     const response = await createQuickbooksEstimate(input);
-    
+
     if (response.isError) {
       logger.error('Failed to create estimate', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
-      return { content: [{ type: "text" as const, text: `Error creating estimate: ${response.error}` }] };
+      return {
+        content: [{ type: 'text' as const, text: `Error creating estimate: ${response.error}` }],
+      };
     }
 
     // Store idempotency result
     if (response.result?.Id) {
       storeIdempotency(idempotencyKey, response.result.Id, 'Estimate');
     }
-    
-    logger.info('Estimate created successfully', { 
+
+    logger.info('Estimate created successfully', {
       estimateId: response.result?.Id,
       customerId: input.CustomerRef?.value,
-      lineCount: input.Line?.length || 0
+      lineCount: input.Line?.length || 0,
     });
     logToolResponse(toolName, true, Date.now() - startTime);
-    
+
     return {
-      content: [
-        { type: "text" as const, text: `Estimate created successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_estimate', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
-      content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
     };
   }
 };
@@ -139,4 +142,4 @@ export const CreateEstimateTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

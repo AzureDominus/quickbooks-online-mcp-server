@@ -44,7 +44,6 @@ const toolHandler = async (args: Record<string, unknown>) => {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: 'text' as const, text: `Account already exists (idempotent):` },
           { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
@@ -73,10 +72,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: 'text' as const, text: `Account created successfully:` },
-        { type: 'text' as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_account', error);

@@ -354,19 +354,20 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
 
     const accounts = response.result;
     logToolResponse('search_accounts', true, Date.now() - startTime);
-    logger.info('Accounts search completed', {
-      count: accounts?.length || 0,
-      criteria: normalized,
-    });
 
     // Handle count-only response
     if (input.count && typeof accounts === 'number') {
+      logger.info('Accounts count completed', { count: accounts, criteria: normalized });
       return {
-        content: [{ type: 'text' as const, text: `Found ${accounts} matching accounts` }],
+        content: [{ type: 'text' as const, text: JSON.stringify({ count: accounts }) }],
       };
     }
 
     const accountArray = Array.isArray(accounts) ? accounts : [];
+    logger.info('Accounts search completed', {
+      count: accountArray.length,
+      criteria: normalized,
+    });
 
     // Build response with filter info
     const responseData = {
@@ -388,10 +389,7 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
     };
 
     return {
-      content: [
-        { type: 'text' as const, text: `Found ${accountArray.length} accounts:` },
-        { type: 'text' as const, text: JSON.stringify(responseData, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(responseData) }],
     };
   } catch (error) {
     logToolResponse('search_accounts', false, Date.now() - startTime);

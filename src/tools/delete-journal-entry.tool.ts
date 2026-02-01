@@ -1,11 +1,11 @@
-import { deleteQuickbooksJournalEntry } from "../handlers/delete-quickbooks-journal-entry.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { DeleteInputSchema } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { deleteQuickbooksJournalEntry } from '../handlers/delete-quickbooks-journal-entry.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { DeleteInputSchema } from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "delete_journal_entry";
+const toolName = 'delete_journal_entry';
 const toolDescription = `Delete (void) a journal entry in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -26,7 +26,7 @@ Example:
 
 // Define the expected input schema for deleting a journal entry
 const toolSchema = z.object({
-  idOrEntity: DeleteInputSchema.describe("Journal entry to delete with Id and SyncToken"),
+  idOrEntity: DeleteInputSchema.describe('Journal entry to delete with Id and SyncToken'),
 });
 
 // Define the tool handler
@@ -44,7 +44,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Error deleting journal entry: ${response.error}` },
+          { type: 'text' as const, text: `Error deleting journal entry: ${response.error}` },
         ],
       };
     }
@@ -53,17 +53,17 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: "text" as const, text: `Journal entry deleted successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in delete_journal_entry', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -74,4 +74,4 @@ export const DeleteJournalEntryTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

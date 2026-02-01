@@ -34,10 +34,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse('get_customer', true, Date.now() - startTime);
     logger.info('Customer retrieved successfully', { customerId: id });
     return {
-      content: [
-        { type: 'text' as const, text: `Customer:` },
-        { type: 'text' as const, text: JSON.stringify(response.result) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logToolResponse('get_customer', false, Date.now() - startTime);

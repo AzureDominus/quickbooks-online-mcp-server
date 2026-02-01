@@ -81,12 +81,13 @@ const toolHandler = async (args: Record<string, unknown>) => {
     if (input.count && typeof response.result === 'number') {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
-        content: [{ type: 'text' as const, text: `Found ${response.result} matching purchases` }],
+        content: [{ type: 'text' as const, text: JSON.stringify({ count: response.result }) }],
       };
     }
 
     // Transform results to user-friendly format
-    const purchases = response.result?.QueryResponse?.Purchase || response.result || [];
+    // Handler now returns the extracted array directly
+    const purchases = response.result || [];
     const purchaseArray = Array.isArray(purchases) ? purchases : [purchases];
 
     const transformedResults = purchaseArray.map(transformPurchaseFromQBO);
@@ -120,10 +121,8 @@ const toolHandler = async (args: Record<string, unknown>) => {
     };
 
     return {
-      content: [
-        { type: 'text' as const, text: `Found ${transformedResults.length} purchases:` },
-        { type: 'text' as const, text: JSON.stringify(responseData, null, 2) },
-      ],
+      // Return a single JSON payload so mcporter/CLIs can parse it reliably.
+      content: [{ type: 'text' as const, text: JSON.stringify(responseData) }],
     };
   } catch (error) {
     logger.error('Unexpected error in search_purchases', error);

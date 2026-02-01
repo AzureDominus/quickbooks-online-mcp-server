@@ -1,0 +1,57 @@
+#!/bin/sh
+# bin/quickbooks-mcp - Run the QuickBooks MCP server with automatic build if needed
+# Usage: ./bin/quickbooks-mcp [args...]
+#
+# This script ensures dist/index.js is up-to-date before running the server.
+# It rebuilds automatically if:
+#   - dist/index.js is missing
+#   - Any src/**/*.ts file is newer than dist/index.js
+#   - package.json, package-lock.json, or tsconfig.json is newer than dist/index.js
+
+set -e
+
+# Resolve repo root (directory containing this script's parent)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+cd "$REPO_ROOT"
+
+# Check for node_modules
+if [ ! -d "node_modules" ]; then
+    echo "Error: node_modules not found. Please run 'npm install' first." >&2
+    exit 1
+fi
+
+DIST_INDEX="dist/index.js"
+
+# Function to check if rebuild is needed
+needs_rebuild() {
+    # If dist/index.js doesn't exist, rebuild
+    if [ ! -f "$DIST_INDEX" ]; then
+        return 0
+    fi
+
+    # Check if any config files are newer than dist/index.js
+    for config_file in package.json package-lock.json tsconfig.json; do
+        if [ -f "$config_file" ] && [ "$config_file" -nt "$DIST_INDEX" ]; then
+            return 0
+        fi
+    done
+
+    # Check if any src/**/*.ts files are newer than dist/index.js
+    # Using find with -newer for POSIX compatibility
+    if find src -name '*.ts' -newer "$DIST_INDEX" 2>/dev/null | grep -q .; then
+        return 0
+    fi
+
+    return 1
+}
+
+# Rebuild if needed
+if needs_rebuild; then
+    echo "Building dist/index.js (sources are newer or dist missing)..." >&2
+    npm run build >&2
+fi
+
+# Run the server, passing through any arguments
+exec node "$DIST_INDEX" "$@"

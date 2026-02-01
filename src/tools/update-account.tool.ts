@@ -1,10 +1,10 @@
-import { updateQuickbooksAccount } from "../handlers/update-quickbooks-account.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { UpdateAccountInputSchema, type UpdateAccountInput } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { updateQuickbooksAccount } from '../handlers/update-quickbooks-account.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { UpdateAccountInputSchema, type UpdateAccountInput } from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
-const toolName = "update_account";
+const toolName = 'update_account';
 const toolDescription = `Update an existing chart-of-accounts entry in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -63,14 +63,24 @@ const toolHandler = async (args: { [x: string]: any }) => {
   try {
     // Validation: ensure at least one update field is provided beyond Id/SyncToken
     const updateFields = [
-      input.Name, input.AccountType, input.AccountSubType, input.Description,
-      input.Classification, input.Active, input.SubAccount, input.ParentRef, input.AcctNum,
+      input.Name,
+      input.AccountType,
+      input.AccountSubType,
+      input.Description,
+      input.Classification,
+      input.Active,
+      input.SubAccount,
+      input.ParentRef,
+      input.AcctNum,
     ];
 
-    if (!updateFields.some(v => v !== undefined)) {
+    if (!updateFields.some((v) => v !== undefined)) {
       return {
         content: [
-          { type: "text" as const, text: `Error: At least one field to update must be provided (Name, AccountType, AccountSubType, Description, Classification, Active, SubAccount, ParentRef, or AcctNum)` },
+          {
+            type: 'text' as const,
+            text: `Error: At least one field to update must be provided (Name, AccountType, AccountSubType, Description, Classification, Active, SubAccount, ParentRef, or AcctNum)`,
+          },
         ],
       };
     }
@@ -101,9 +111,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logger.error('Failed to update account', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error updating account: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error updating account: ${response.error}` }],
       };
     }
 
@@ -111,17 +119,17 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: "text" as const, text: `Account updated successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in update_account', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -132,4 +140,4 @@ export const UpdateAccountTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

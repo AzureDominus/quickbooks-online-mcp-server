@@ -250,8 +250,25 @@ class QuickbooksClient {
           })
           .toString();
 
-        // Open browser automatically
-        await open(authUri);
+        // Print auth URL so it can be opened manually (headless-friendly)
+        logger.info(
+          'QuickBooks OAuth URL (open this in a browser on the same machine or via SSH tunnel)',
+          {
+            authUri,
+          }
+        );
+        // Also print to stderr for easy copy/paste
+        console.error('QuickBooks OAuth URL:', authUri);
+
+        // Try to open browser automatically, but don't crash if we're headless
+        try {
+          await open(authUri);
+        } catch (e) {
+          logger.warn('Failed to auto-open browser. Open the URL manually.', {
+            authUri,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
       });
 
       // Handle server errors

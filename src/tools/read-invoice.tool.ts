@@ -38,16 +38,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse('read_invoice', true, Date.now() - startTime);
     logger.info('Invoice read successfully', { invoiceId: invoice_id });
     return {
-      content: [
-        {
-          type: 'text' as const,
-          text: `Invoice details for ID ${invoice_id}:`,
-        },
-        {
-          type: 'text' as const,
-          text: JSON.stringify(response.result, null, 2),
-        },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logToolResponse('read_invoice', false, Date.now() - startTime);

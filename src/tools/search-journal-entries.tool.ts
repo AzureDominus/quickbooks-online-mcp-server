@@ -1,10 +1,10 @@
-import { searchQuickbooksJournalEntries } from "../handlers/search-quickbooks-journal-entries.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { searchQuickbooksJournalEntries } from '../handlers/search-quickbooks-journal-entries.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "search_journal_entries";
+const toolName = 'search_journal_entries';
 const toolDescription = `Search journal entries in QuickBooks Online with advanced filtering.
 
 Journal entries are used to record debits and credits to accounts, typically for adjusting entries, 
@@ -61,92 +61,98 @@ Example - Find adjustment entries:
 
 // Allowed fields for JournalEntry entity filtering
 const ALLOWED_FILTER_FIELDS = [
-  "Id",
-  "DocNumber",
-  "TxnDate",
-  "TotalAmt",
-  "Adjustment",
-  "PrivateNote",
-  "MetaData.CreateTime",
-  "MetaData.LastUpdatedTime",
+  'Id',
+  'DocNumber',
+  'TxnDate',
+  'TotalAmt',
+  'Adjustment',
+  'PrivateNote',
+  'MetaData.CreateTime',
+  'MetaData.LastUpdatedTime',
 ] as const;
 
 const ALLOWED_SORT_FIELDS = [
-  "Id",
-  "DocNumber",
-  "TxnDate",
-  "TotalAmt",
-  "MetaData.CreateTime",
-  "MetaData.LastUpdatedTime",
+  'Id',
+  'DocNumber',
+  'TxnDate',
+  'TotalAmt',
+  'MetaData.CreateTime',
+  'MetaData.LastUpdatedTime',
 ] as const;
 
 // Criterion schema for typed search criteria
 const CriterionSchema = z.object({
-  field: z.enum(ALLOWED_FILTER_FIELDS).describe(
-    `Field to filter on. Allowed: ${ALLOWED_FILTER_FIELDS.join(", ")}`
-  ),
-  value: z.union([z.string(), z.boolean()]).describe("Value to match"),
-  operator: z.enum(["=", "<", ">", "<=", ">=", "LIKE", "IN"])
+  field: z
+    .enum(ALLOWED_FILTER_FIELDS)
+    .describe(`Field to filter on. Allowed: ${ALLOWED_FILTER_FIELDS.join(', ')}`),
+  value: z.union([z.string(), z.boolean()]).describe('Value to match'),
+  operator: z
+    .enum(['=', '<', '>', '<=', '>=', 'LIKE', 'IN'])
     .optional()
-    .default("=")
-    .describe("Comparison operator (default: =)"),
+    .default('=')
+    .describe('Comparison operator (default: =)'),
 });
 
 // Define the expected input schema for searching journal entries
 const toolSchema = z.object({
   // Convenience filter parameters
   /** Start date (inclusive) for transaction date */
-  txnDateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+  txnDateFrom: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional()
-    .describe("Filter by start date (YYYY-MM-DD, inclusive)"),
+    .describe('Filter by start date (YYYY-MM-DD, inclusive)'),
   /** End date (inclusive) for transaction date */
-  txnDateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+  txnDateTo: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional()
-    .describe("Filter by end date (YYYY-MM-DD, inclusive)"),
+    .describe('Filter by end date (YYYY-MM-DD, inclusive)'),
   /** Minimum total amount */
-  totalAmtMin: z.number()
-    .optional()
-    .describe("Filter by minimum total amount"),
+  totalAmtMin: z.number().optional().describe('Filter by minimum total amount'),
   /** Maximum total amount */
-  totalAmtMax: z.number()
-    .optional()
-    .describe("Filter by maximum total amount"),
+  totalAmtMax: z.number().optional().describe('Filter by maximum total amount'),
   /** Document/reference number filter */
-  docNumber: z.string()
+  docNumber: z
+    .string()
     .optional()
-    .describe("Filter by document/reference number (use % for LIKE matching)"),
+    .describe('Filter by document/reference number (use % for LIKE matching)'),
   /** Filter by adjustment flag */
-  adjustment: z.boolean()
+  adjustment: z
+    .boolean()
     .optional()
-    .describe("Filter by adjustment flag (true = adjustment entries only)"),
+    .describe('Filter by adjustment flag (true = adjustment entries only)'),
   // Advanced criteria for complex queries
-  criteria: z.array(CriterionSchema)
+  criteria: z
+    .array(CriterionSchema)
     .optional()
-    .describe("Additional filter criteria for advanced queries"),
-  asc: z.enum(ALLOWED_SORT_FIELDS)
+    .describe('Additional filter criteria for advanced queries'),
+  asc: z
+    .enum(ALLOWED_SORT_FIELDS)
     .optional()
-    .describe(`Sort ascending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
-  desc: z.enum(ALLOWED_SORT_FIELDS)
+    .describe(`Sort ascending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(', ')}`),
+  desc: z
+    .enum(ALLOWED_SORT_FIELDS)
     .optional()
-    .describe(`Sort descending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
-  limit: z.number().int().min(1).max(1000)
+    .describe(`Sort descending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(', ')}`),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(1000)
     .optional()
-    .describe("Maximum results to return (1-1000, default 100)"),
-  offset: z.number().int().min(0)
-    .optional()
-    .describe("Number of records to skip for pagination"),
-  count: z.boolean()
-    .optional()
-    .describe("If true, only return count of matching records"),
-  fetchAll: z.boolean()
-    .optional()
-    .describe("If true, fetch all matching records (may be slow)"),
+    .describe('Maximum results to return (1-1000, default 100)'),
+  offset: z.number().int().min(0).optional().describe('Number of records to skip for pagination'),
+  count: z.boolean().optional().describe('If true, only return count of matching records'),
+  fetchAll: z.boolean().optional().describe('If true, fetch all matching records (may be slow)'),
 });
 
 /**
  * Build search criteria from convenience filter parameters
  */
-function buildJournalEntrySearchCriteria(input: ToolParams): Array<{ field: string; value: string | boolean; operator?: string }> {
+function buildJournalEntrySearchCriteria(
+  input: ToolParams
+): Array<{ field: string; value: string | boolean; operator?: string }> {
   const criteria: Array<{ field: string; value: string | boolean; operator?: string }> = [];
 
   // Transaction date range filters
@@ -186,19 +192,16 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
   const startTime = Date.now();
   // Handle both wrapped params and direct args
   const input = args.params ?? args;
-  
+
   logToolRequest(toolName, input);
 
   try {
     // Build criteria from convenience filter parameters
     const convenienceFilters = buildJournalEntrySearchCriteria(input);
-    
+
     // Merge convenience filters with any advanced criteria
-    const allCriteria = [
-      ...convenienceFilters,
-      ...(input.criteria || []),
-    ];
-    
+    const allCriteria = [...convenienceFilters, ...(input.criteria || [])];
+
     // Build search params
     const searchParams = {
       criteria: allCriteria.length > 0 ? allCriteria : undefined,
@@ -209,28 +212,34 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
       count: input.count,
       fetchAll: input.fetchAll,
     };
-    
+
     logger.debug('Built journal entry search criteria', {
       convenienceFiltersCount: convenienceFilters.length,
       totalCriteriaCount: allCriteria.length,
     });
-    
+
     const response = await searchQuickbooksJournalEntries(searchParams);
 
     if (response.isError) {
-      logger.error('Failed to search journal entries', new Error(response.error || 'Unknown error'));
+      logger.error(
+        'Failed to search journal entries',
+        new Error(response.error || 'Unknown error')
+      );
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Error searching journal entries: ${response.error}` },
+          { type: 'text' as const, text: `Error searching journal entries: ${response.error}` },
         ],
       };
     }
 
     const results = response.result;
-    const resultCount = Array.isArray(results) ? results.length : 
-      (typeof results === 'number' ? results : 0);
-    
+    const resultCount = Array.isArray(results)
+      ? results.length
+      : typeof results === 'number'
+        ? results
+        : 0;
+
     logger.info('Journal entry search completed', {
       resultCount,
       limit: input.limit,
@@ -240,16 +249,17 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
 
     if (input.count && typeof results === 'number') {
       return {
-        content: [
-          { type: "text" as const, text: `Found ${results} matching journal entries` },
-        ],
+        content: [{ type: 'text' as const, text: JSON.stringify({ count: results }) }],
       };
     }
 
+    // Return a single JSON payload.
     return {
       content: [
-        { type: "text" as const, text: `Journal entries found: ${resultCount}` },
-        { type: "text" as const, text: JSON.stringify(results, null, 2) },
+        {
+          type: 'text' as const,
+          text: JSON.stringify({ count: resultCount, journalEntries: results }),
+        },
       ],
     };
   } catch (error) {
@@ -257,7 +267,10 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -268,4 +281,4 @@ export const SearchJournalEntriesTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

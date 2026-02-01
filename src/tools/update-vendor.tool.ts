@@ -66,12 +66,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse('update_vendor', true, Date.now() - startTime);
     logger.info('Vendor updated successfully', { vendorId: typedArgs.vendor?.Id });
     return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify(vendor),
-        },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(vendor) }],
     };
   } catch (error) {
     logToolResponse('update_vendor', false, Date.now() - startTime);

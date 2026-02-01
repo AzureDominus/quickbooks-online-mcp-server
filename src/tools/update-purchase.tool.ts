@@ -167,10 +167,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: 'text' as const, text: `Purchase updated successfully:` },
-        { type: 'text' as const, text: JSON.stringify(transformedResult, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(transformedResult) }],
     };
   } catch (error) {
     logger.error('Unexpected error in update_purchase', error);

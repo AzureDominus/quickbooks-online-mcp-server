@@ -39,12 +39,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse('delete_vendor', true, Date.now() - startTime);
     logger.info('Vendor deleted successfully', { vendorId: args.vendor?.Id });
     return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify(vendor),
-        },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(vendor) }],
     };
   } catch (error) {
     logToolResponse('delete_vendor', false, Date.now() - startTime);

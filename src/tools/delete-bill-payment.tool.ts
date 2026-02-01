@@ -54,10 +54,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: 'text' as const, text: `Bill payment deleted successfully:` },
-        { type: 'text' as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in delete_bill_payment', error);

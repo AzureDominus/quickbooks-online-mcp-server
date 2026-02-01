@@ -96,7 +96,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
     if (input.count && typeof response.result === 'number') {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
-        content: [{ type: 'text' as const, text: `Found ${response.result} matching invoices` }],
+        content: [{ type: 'text' as const, text: JSON.stringify({ count: response.result }) }],
       };
     }
 
@@ -134,10 +134,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
     };
 
     return {
-      content: [
-        { type: 'text' as const, text: `Found ${resultArray.length} invoices:` },
-        { type: 'text' as const, text: JSON.stringify(responseData, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(responseData) }],
     };
   } catch (error) {
     logger.error('Unexpected error in search_invoices', error);
