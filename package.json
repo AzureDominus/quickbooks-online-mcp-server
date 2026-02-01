@@ -13,9 +13,9 @@
         "build": "tsc && shx chmod +x dist/*.js",
         "prepare": "npm run build",
         "watch": "tsc --watch",
-        "test": "node --test --experimental-strip-types --import tsx src/tests/*.test.ts",
-        "test:unit": "node --test --experimental-strip-types --import tsx src/tests/*.test.ts --test-name-pattern 'IdempotencyService|Transform|Schema|Logger'",
-        "test:integration": "node --test --experimental-strip-types --import tsx src/tests/*.test.ts --test-name-pattern 'Integration'",
+        "test": "node --test --experimental-strip-types --import tsx src/tests/**/*.test.ts",
+        "test:unit": "node --test --experimental-strip-types --import tsx src/tests/unit/*.test.ts",
+        "test:integration": "node --test --experimental-strip-types --import tsx src/tests/integration/*.test.ts",
         "lint:fix": "eslint --fix",
         "lint": "eslint .",
         "auth": "node dist/auth-server.js"
