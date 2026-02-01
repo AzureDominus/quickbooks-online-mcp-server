@@ -6,6 +6,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { testInfo } from '../utils/test-logger.js';
 
 // =============================================================================
 // Idempotency Integration Test
@@ -32,7 +33,7 @@ describe('Idempotency Integration Test', () => {
     });
     
     if (accountsResult.isError) {
-      console.log('Could not fetch accounts - skipping idempotency test');
+      testInfo('Could not fetch accounts - skipping idempotency test');
       return;
     }
     
@@ -41,7 +42,7 @@ describe('Idempotency Integration Test', () => {
     const expenseAccount = accounts.find((a: any) => a.AccountType === 'Expense');
     
     if (!bankAccount || !expenseAccount) {
-      console.log('Required accounts not found - skipping idempotency test');
+      testInfo('Required accounts not found - skipping idempotency test');
       return;
     }
 
@@ -75,7 +76,7 @@ describe('Idempotency Integration Test', () => {
     
     const purchaseId = result1.result.Id;
     const syncToken = result1.result.SyncToken;
-    console.log(`Created first purchase: ID=${purchaseId}`);
+    testInfo(`Created first purchase: ID=${purchaseId}`);
 
     // Store the idempotency key
     storeIdempotency(idempotencyKey, purchaseId, 'Purchase');
@@ -95,9 +96,9 @@ describe('Idempotency Integration Test', () => {
         SyncToken: syncToken,
       });
       assert.ok(!deleteResult.isError, `Delete failed: ${deleteResult.error}`);
-      console.log(`Deleted purchase: ID=${purchaseId}`);
+      testInfo(`Deleted purchase: ID=${purchaseId}`);
     } catch (cleanupError) {
-      console.log(`Cleanup error: ${cleanupError}`);
+      testInfo(`Cleanup error: ${cleanupError}`);
     }
 
     // Clean up idempotency entry
@@ -105,4 +106,4 @@ describe('Idempotency Integration Test', () => {
   });
 });
 
-console.log('Integration tests: Idempotency loaded successfully');
+// Integration tests: Idempotency loaded

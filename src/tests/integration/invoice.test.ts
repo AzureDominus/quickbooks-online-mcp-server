@@ -6,6 +6,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { testInfo } from '../utils/test-logger.js';
 
 // =============================================================================
 // Invoice Lifecycle Integration Test
@@ -35,13 +36,13 @@ describe('Invoice Lifecycle Integration Test', () => {
     // Find a customer
     const customerResult = await searchQuickbooksCustomers({ limit: 1 });
     if (customerResult.isError) {
-      console.log('Could not fetch customers - skipping invoice lifecycle test');
+      testInfo('Could not fetch customers - skipping invoice lifecycle test');
       return;
     }
     
     const customers = (customerResult.result as any)?.QueryResponse?.Customer || [];
     if (customers.length === 0) {
-      console.log('No customers found - skipping invoice lifecycle test');
+      testInfo('No customers found - skipping invoice lifecycle test');
       return;
     }
     testCustomerId = customers[0].Id;
@@ -53,21 +54,21 @@ describe('Invoice Lifecycle Integration Test', () => {
     });
     
     if (itemsResult.isError || !itemsResult.result || itemsResult.result.length === 0) {
-      console.log('No items found - skipping invoice lifecycle test');
+      testInfo('No items found - skipping invoice lifecycle test');
       return;
     }
     
     // Find an item that can be used on invoices
     const item = itemsResult.result.find((i: any) => i.Type === 'Service' || i.Type === 'NonInventory' || i.Type === 'Inventory');
     if (!item) {
-      console.log('No suitable item found for invoice - skipping');
+      testInfo('No suitable item found for invoice - skipping');
       return;
     }
     testItemId = item.Id;
 
     // Ensure we have valid IDs before proceeding
     if (!testCustomerId || !testItemId) {
-      console.log('Missing customer or item ID - skipping');
+      testInfo('Missing customer or item ID - skipping');
       return;
     }
 
@@ -93,11 +94,11 @@ describe('Invoice Lifecycle Integration Test', () => {
     
     invoiceId = createResult.result.Id;
     invoiceSyncToken = createResult.result.SyncToken;
-    console.log(`Created invoice: ID=${invoiceId}`);
+    testInfo(`Created invoice: ID=${invoiceId}`);
 
     // Ensure invoiceId is valid before reading
     if (!invoiceId) {
-      console.log('No invoice ID - skipping read');
+      testInfo('No invoice ID - skipping read');
       return;
     }
 
@@ -128,10 +129,10 @@ describe('Invoice Lifecycle Integration Test', () => {
         (qb as any).voidInvoice?.(voidPayload, (err: any) => {
           if (err) {
             // If voidInvoice doesn't work, just mark the test as complete
-            console.log('Invoice void not available or failed, cleanup may be needed');
+            testInfo('Invoice void not available or failed, cleanup may be needed');
             resolve();
           } else {
-            console.log(`Voided invoice: ID=${invoiceId}`);
+            testInfo(`Voided invoice: ID=${invoiceId}`);
             resolve();
           }
         });
@@ -140,7 +141,7 @@ describe('Invoice Lifecycle Integration Test', () => {
         setTimeout(() => resolve(), 5000);
       });
     } catch (cleanupError) {
-      console.log(`Invoice cleanup note: ${cleanupError}`);
+      testInfo(`Invoice cleanup note: ${cleanupError}`);
     }
   });
 
@@ -158,4 +159,4 @@ describe('Invoice Lifecycle Integration Test', () => {
   });
 });
 
-console.log('Integration tests: Invoice loaded successfully');
+// Integration tests: Invoice loaded

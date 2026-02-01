@@ -200,4 +200,4 @@ describe('Schema Validation', () => {
   });
 });
 
-console.log('Unit tests: Schemas loaded successfully');
+// Unit tests: Schemas loaded

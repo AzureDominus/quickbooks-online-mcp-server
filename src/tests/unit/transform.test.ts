@@ -681,4 +681,4 @@ describe('Transform Helpers', () => {
   });
 });
 
-console.log('Unit tests: Transform loaded successfully');
+// Unit tests: Transform loaded

@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import { testInfo } from '../utils/test-logger.js';
 
 // =============================================================================
 // Attachment Upload/Download Integration Test
@@ -44,7 +45,7 @@ describe('Attachment Upload/Download Integration Test', () => {
     });
     
     if (accountsResult.isError) {
-      console.log('Could not fetch accounts - skipping attachment test');
+      testInfo('Could not fetch accounts - skipping attachment test');
       return;
     }
     
@@ -53,7 +54,7 @@ describe('Attachment Upload/Download Integration Test', () => {
     const expenseAccount = accounts.find((a: any) => a.AccountType === 'Expense');
     
     if (!bankAccount || !expenseAccount) {
-      console.log('Required accounts not found - skipping attachment test');
+      testInfo('Required accounts not found - skipping attachment test');
       return;
     }
 
@@ -80,12 +81,12 @@ describe('Attachment Upload/Download Integration Test', () => {
     
     testPurchaseId = result.result.Id;
     testPurchaseSyncToken = result.result.SyncToken;
-    console.log(`Created test purchase for attachment: ID=${testPurchaseId}`);
+    testInfo(`Created test purchase for attachment: ID=${testPurchaseId}`);
   });
 
   it('should upload an attachment to the test purchase', async () => {
     if (!testPurchaseId) {
-      console.log('No test purchase - skipping upload test');
+      testInfo('No test purchase - skipping upload test');
       return;
     }
 
@@ -94,7 +95,7 @@ describe('Attachment Upload/Download Integration Test', () => {
     // Create a test file
     testFilePath = path.join(os.tmpdir(), testFileName);
     fs.writeFileSync(testFilePath, testFileContent);
-    console.log(`Created test file: ${testFilePath}`);
+    testInfo(`Created test file: ${testFilePath}`);
 
     // Upload the attachment
     const result = await uploadAttachment({
@@ -109,12 +110,12 @@ describe('Attachment Upload/Download Integration Test', () => {
     assert.equal(result.result?.entityId, testPurchaseId, 'Entity ID should match');
 
     testAttachmentId = result.result.id;
-    console.log(`Uploaded attachment: ID=${testAttachmentId}, fileName=${result.result.fileName}`);
+    testInfo(`Uploaded attachment: ID=${testAttachmentId}, fileName=${result.result.fileName}`);
   });
 
   it('should get attachments for the test purchase', async () => {
     if (!testPurchaseId) {
-      console.log('No test purchase - skipping get attachments test');
+      testInfo('No test purchase - skipping get attachments test');
       return;
     }
 
@@ -129,15 +130,15 @@ describe('Attachment Upload/Download Integration Test', () => {
     if (testAttachmentId) {
       const found = result.result?.find((a: any) => a.id === testAttachmentId);
       assert.ok(found, `Should find the uploaded attachment with ID ${testAttachmentId}`);
-      console.log(`Found ${result.result?.length} attachments for purchase`);
+      testInfo(`Found ${result.result?.length} attachments for purchase`);
     } else {
-      console.log(`Found ${result.result?.length || 0} attachments for purchase`);
+      testInfo(`Found ${result.result?.length || 0} attachments for purchase`);
     }
   });
 
   it('should download the uploaded attachment', async () => {
     if (!testAttachmentId) {
-      console.log('No test attachment - skipping download test');
+      testInfo('No test attachment - skipping download test');
       return;
     }
 
@@ -159,23 +160,23 @@ describe('Attachment Upload/Download Integration Test', () => {
     const downloadedContent = fs.readFileSync(result.result.filePath, 'utf-8');
     assert.equal(downloadedContent, testFileContent, 'Downloaded content should match original');
     
-    console.log(`Downloaded attachment to: ${result.result.filePath}, size=${result.result.size}`);
+    testInfo(`Downloaded attachment to: ${result.result.filePath}, size=${result.result.size}`);
   });
 
   it('should clean up: delete the test purchase', async () => {
     // Clean up test files
     if (testFilePath && fs.existsSync(testFilePath)) {
       fs.unlinkSync(testFilePath);
-      console.log(`Deleted test file: ${testFilePath}`);
+      testInfo(`Deleted test file: ${testFilePath}`);
     }
     
     if (downloadedFilePath && fs.existsSync(downloadedFilePath)) {
       fs.unlinkSync(downloadedFilePath);
-      console.log(`Deleted downloaded file: ${downloadedFilePath}`);
+      testInfo(`Deleted downloaded file: ${downloadedFilePath}`);
     }
 
     if (!testPurchaseId || !testPurchaseSyncToken) {
-      console.log('No test purchase to clean up');
+      testInfo('No test purchase to clean up');
       return;
     }
 
@@ -187,8 +188,8 @@ describe('Attachment Upload/Download Integration Test', () => {
     });
 
     assert.ok(!result.isError, `Delete purchase failed: ${result.error}`);
-    console.log(`Deleted test purchase: ID=${testPurchaseId}`);
+    testInfo(`Deleted test purchase: ID=${testPurchaseId}`);
   });
 });
 
-console.log('Integration tests: Attachment loaded successfully');
+// Integration tests: Attachment loaded

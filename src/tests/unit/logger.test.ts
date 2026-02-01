@@ -39,4 +39,4 @@ describe('Logger', () => {
   });
 });
 
-console.log('Unit tests: Logger loaded successfully');
+// Unit tests: Logger loaded

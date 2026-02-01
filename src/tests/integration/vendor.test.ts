@@ -6,6 +6,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { testInfo } from '../utils/test-logger.js';
 
 // =============================================================================
 // Vendor Read Integration Tests
@@ -54,7 +55,7 @@ describe('Integration Tests - Vendor API', () => {
     
     const vendors = (searchResult.result as any)?.QueryResponse?.Vendor || [];
     if (vendors.length === 0) {
-      console.log('No vendors found to read');
+      testInfo('No vendors found to read');
       return;
     }
     
@@ -92,7 +93,7 @@ describe('Vendor CRUD Lifecycle', { skip: true }, () => {
 
   it('should create a vendor', async () => {
     if (!hasOAuth) {
-      console.log('Skipping - OAuth not configured');
+      testInfo('Skipping - OAuth not configured');
       return;
     }
 
@@ -125,12 +126,12 @@ describe('Vendor CRUD Lifecycle', { skip: true }, () => {
     vendorId = result.result.Id;
     syncToken = result.result.SyncToken;
     
-    console.log(`Created vendor: ID=${vendorId}, SyncToken=${syncToken}`);
+    testInfo(`Created vendor: ID=${vendorId}, SyncToken=${syncToken}`);
   });
 
   it('should read the created vendor', async () => {
     if (!hasOAuth || !vendorId) {
-      console.log('Skipping - OAuth not configured or no vendor created');
+      testInfo('Skipping - OAuth not configured or no vendor created');
       return;
     }
 
@@ -149,7 +150,7 @@ describe('Vendor CRUD Lifecycle', { skip: true }, () => {
 
   it('should update the vendor', async () => {
     if (!hasOAuth || !vendorId) {
-      console.log('Skipping - OAuth not configured or no vendor created');
+      testInfo('Skipping - OAuth not configured or no vendor created');
       return;
     }
 
@@ -172,12 +173,12 @@ describe('Vendor CRUD Lifecycle', { skip: true }, () => {
     // Update syncToken for delete
     syncToken = result.result.SyncToken;
     
-    console.log(`Updated vendor: ID=${vendorId}, new SyncToken=${syncToken}`);
+    testInfo(`Updated vendor: ID=${vendorId}, new SyncToken=${syncToken}`);
   });
 
   it('should delete (deactivate) the vendor', async () => {
     if (!hasOAuth || !vendorId) {
-      console.log('Skipping - OAuth not configured or no vendor created');
+      testInfo('Skipping - OAuth not configured or no vendor created');
       return;
     }
 
@@ -198,8 +199,8 @@ describe('Vendor CRUD Lifecycle', { skip: true }, () => {
     assert.ok(!verifyResult.isError);
     assert.equal(verifyResult.result?.Active, false, 'Vendor should be inactive after delete');
     
-    console.log(`Deleted (deactivated) vendor: ID=${vendorId}`);
+    testInfo(`Deleted (deactivated) vendor: ID=${vendorId}`);
   });
 });
 
-console.log('Integration tests: Vendor loaded successfully');
+// Integration tests: Vendor loaded

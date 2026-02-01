@@ -6,6 +6,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { testInfo } from '../utils/test-logger.js';
 
 // =============================================================================
 // Customer Read Integration Tests
@@ -54,7 +55,7 @@ describe('Integration Tests - Customer API', () => {
     
     const customers = (searchResult.result as any)?.QueryResponse?.Customer || [];
     if (customers.length === 0) {
-      console.log('No customers found to read');
+      testInfo('No customers found to read');
       return;
     }
     
@@ -92,7 +93,7 @@ describe('Customer CRUD Lifecycle', { skip: true }, () => {
 
   it('should create a customer', async () => {
     if (!hasOAuth) {
-      console.log('Skipping - OAuth not configured');
+      testInfo('Skipping - OAuth not configured');
       return;
     }
 
@@ -126,12 +127,12 @@ describe('Customer CRUD Lifecycle', { skip: true }, () => {
     customerId = result.result.Id;
     syncToken = result.result.SyncToken;
     
-    console.log(`Created customer: ID=${customerId}, SyncToken=${syncToken}`);
+    testInfo(`Created customer: ID=${customerId}, SyncToken=${syncToken}`);
   });
 
   it('should read the created customer', async () => {
     if (!hasOAuth || !customerId) {
-      console.log('Skipping - OAuth not configured or no customer created');
+      testInfo('Skipping - OAuth not configured or no customer created');
       return;
     }
 
@@ -150,7 +151,7 @@ describe('Customer CRUD Lifecycle', { skip: true }, () => {
 
   it('should update the customer', async () => {
     if (!hasOAuth || !customerId) {
-      console.log('Skipping - OAuth not configured or no customer created');
+      testInfo('Skipping - OAuth not configured or no customer created');
       return;
     }
 
@@ -174,12 +175,12 @@ describe('Customer CRUD Lifecycle', { skip: true }, () => {
     // Update syncToken for delete
     syncToken = result.result.SyncToken;
     
-    console.log(`Updated customer: ID=${customerId}, new SyncToken=${syncToken}`);
+    testInfo(`Updated customer: ID=${customerId}, new SyncToken=${syncToken}`);
   });
 
   it('should delete (deactivate) the customer', async () => {
     if (!hasOAuth || !customerId) {
-      console.log('Skipping - OAuth not configured or no customer created');
+      testInfo('Skipping - OAuth not configured or no customer created');
       return;
     }
 
@@ -200,8 +201,8 @@ describe('Customer CRUD Lifecycle', { skip: true }, () => {
     assert.ok(!verifyResult.isError);
     assert.equal(verifyResult.result?.Active, false, 'Customer should be inactive after delete');
     
-    console.log(`Deleted (deactivated) customer: ID=${customerId}`);
+    testInfo(`Deleted (deactivated) customer: ID=${customerId}`);
   });
 });
 
-console.log('Integration tests: Customer loaded successfully');
+// Integration tests: Customer loaded

@@ -23,4 +23,4 @@ import './integration/attachment.test.js';
 import './integration/tax-code.test.js';
 import './integration/idempotency.test.js';
 
-console.log('All test files loaded successfully');
+// All test files loaded

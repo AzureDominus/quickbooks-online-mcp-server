@@ -163,4 +163,4 @@ describe('Idempotency Helper Functions', () => {
   });
 });
 
-console.log('Unit tests: Idempotency loaded successfully');
+// Unit tests: Idempotency loaded

@@ -202,19 +202,7 @@ Phase 3 focuses on code quality, security hardening, test organization, and comp
 - **Status:** 🔴 Not Started
 - **Action:** Add husky + lint-staged for pre-commit linting/formatting
 
-### Task 6.4: Add GitHub Actions CI workflow
-- **Status:** 🔴 Not Started
-- **Action:** Create `.github/workflows/ci.yml` with:
-  - TypeScript compilation check
-  - ESLint
-  - Unit tests
-  - (Optional) Integration tests with sandbox
-
-### Task 6.5: Add VS Code workspace settings
-- **Status:** 🔴 Not Started
-- **Action:** Create `.vscode/settings.json` with recommended settings
-
-### Task 6.6: Add npm scripts for common tasks
+### Task 6.4: Add npm scripts for common tasks
 - **Status:** ✅ Completed (commit 77e33f4)
 - **File:** `package.json`
 - **Fix:** Added lint, lint:fix, format, format:check scripts
@@ -230,7 +218,7 @@ Phase 3 focuses on code quality, security hardening, test organization, and comp
 | P3 - Documentation | 6 | 6 | 0 | 0 |
 | P4 - Code Quality | 8 | 0 | 0 | 8 |
 | P5 - Error Handling | 5 | 1 | 0 | 4 |
-| P6 - Developer Experience | 6 | 3 | 0 | 3 |
+| P6 - Developer Experience | 4 | 1 | 0 | 3 |
 | **TOTAL** | **35** | **17** | **0** | **18** |
 
 ---

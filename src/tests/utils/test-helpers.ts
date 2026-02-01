@@ -6,6 +6,7 @@
  */
 
 import { quickbooksClient } from '../../clients/quickbooks-client.js';
+import { testInfo, testWarn, testError } from './test-logger.js';
 import { searchQuickbooksAccounts } from '../../handlers/search-quickbooks-accounts.handler.js';
 import { createQuickbooksPurchase } from '../../handlers/create-quickbooks-purchase.handler.js';
 import { deleteQuickbooksPurchase } from '../../handlers/delete-quickbooks-purchase.handler.js';
@@ -31,7 +32,7 @@ export function hasOAuthCredentials(): boolean {
  */
 export function skipIfNoOAuth(message: string = 'OAuth not configured'): boolean {
   if (!hasOAuthCredentials()) {
-    console.log(`⏭️  ${message}`);
+    testInfo(`Skipping: ${message}`);
     return true;
   }
   return false;
@@ -74,7 +75,7 @@ export async function getTestAccounts(): Promise<TestAccounts | null> {
     });
 
     if (accountsResult.isError) {
-      console.log('❌ Could not fetch accounts:', accountsResult.error);
+      testError('Could not fetch accounts', accountsResult.error);
       return null;
     }
 
@@ -87,13 +88,13 @@ export async function getTestAccounts(): Promise<TestAccounts | null> {
     const incomeAccount = accounts.find((a: any) => a.AccountType === 'Income');
 
     if (!bankAccount || !expenseAccount) {
-      console.log('❌ Required accounts not found (need Bank/Credit Card and Expense accounts)');
+      testError('Required accounts not found (need Bank/Credit Card and Expense accounts)');
       return null;
     }
 
     return { bankAccount, expenseAccount, incomeAccount };
   } catch (error) {
-    console.log('❌ Error fetching test accounts:', error);
+    testError('Error fetching test accounts', error);
     return null;
   }
 }
@@ -221,10 +222,10 @@ export async function cleanupTestData(
         await deleteQuickbooksEstimate({ Id: entityId, SyncToken: syncToken });
         break;
       default:
-        console.log(`⚠️  Cleanup not implemented for entity type: ${entityType}`);
+        testWarn(`Cleanup not implemented for entity type: ${entityType}`);
     }
   } catch (error) {
-    console.log(`⚠️  Failed to cleanup ${entityType} ${entityId}:`, error);
+    testWarn(`Failed to cleanup ${entityType} ${entityId}: ${error}`);
   }
 }
 
@@ -302,7 +303,7 @@ export async function retry<T>(
       lastError = error instanceof Error ? error : new Error(String(error));
       
       if (attempt < maxAttempts) {
-        console.log(`⏳ Attempt ${attempt} failed, retrying in ${delay}ms...`);
+        testInfo(`Attempt ${attempt} failed, retrying in ${delay}ms...`);
         await wait(delay);
         delay = Math.min(delay * backoffMultiplier, maxDelay);
       }

@@ -6,6 +6,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { testInfo } from '../utils/test-logger.js';
 
 // =============================================================================
 // Bill Lifecycle Integration Test
@@ -30,13 +31,13 @@ describe('Bill Lifecycle Integration Test', () => {
     // Find a vendor
     const vendorResult = await searchQuickbooksVendors({ limit: 1 });
     if (vendorResult.isError) {
-      console.log('Could not fetch vendors - skipping bill lifecycle test');
+      testInfo('Could not fetch vendors - skipping bill lifecycle test');
       return;
     }
     
     const vendors = (vendorResult.result as any)?.QueryResponse?.Vendor || [];
     if (vendors.length === 0) {
-      console.log('No vendors found - skipping bill lifecycle test');
+      testInfo('No vendors found - skipping bill lifecycle test');
       return;
     }
     const vendorId = vendors[0].Id;
@@ -48,7 +49,7 @@ describe('Bill Lifecycle Integration Test', () => {
     });
     
     if (accountsResult.isError) {
-      console.log('Could not fetch accounts - skipping bill lifecycle test');
+      testInfo('Could not fetch accounts - skipping bill lifecycle test');
       return;
     }
     
@@ -56,7 +57,7 @@ describe('Bill Lifecycle Integration Test', () => {
     const expenseAccount = accounts.find((a: any) => a.AccountType === 'Expense');
     
     if (!expenseAccount) {
-      console.log('No expense account found - skipping bill lifecycle test');
+      testInfo('No expense account found - skipping bill lifecycle test');
       return;
     }
 
@@ -87,7 +88,7 @@ describe('Bill Lifecycle Integration Test', () => {
     
     const billId = createResult.result.Id;
     let syncToken = createResult.result.SyncToken;
-    console.log(`Created bill: ID=${billId}, DocNumber=${docNumber}`);
+    testInfo(`Created bill: ID=${billId}, DocNumber=${docNumber}`);
 
     try {
       // READ: Read the bill back
@@ -112,7 +113,7 @@ describe('Bill Lifecycle Integration Test', () => {
       const updateResult = await updateQuickbooksBill(updateData);
       assert.ok(!updateResult.isError, `Update bill failed: ${updateResult.error}`);
       assert.equal(updateResult.result?.PrivateNote, updatedMemo, 'Memo should be updated');
-      console.log(`Updated bill: ID=${billId}`);
+      testInfo(`Updated bill: ID=${billId}`);
       
       syncToken = updateResult.result.SyncToken;
 
@@ -124,7 +125,7 @@ describe('Bill Lifecycle Integration Test', () => {
 
       const deleteResult = await deleteQuickbooksBill(deleteData);
       assert.ok(!deleteResult.isError, `Delete bill failed: ${deleteResult.error}`);
-      console.log(`Deleted bill: ID=${billId}`);
+      testInfo(`Deleted bill: ID=${billId}`);
 
     } catch (error) {
       // Try to clean up even if test fails
@@ -149,4 +150,4 @@ describe('Bill Lifecycle Integration Test', () => {
   });
 });
 
-console.log('Integration tests: Bill loaded successfully');
+// Integration tests: Bill loaded

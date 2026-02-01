@@ -6,6 +6,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { testInfo } from '../utils/test-logger.js';
 
 // =============================================================================
 // Integration Tests: Purchase API
@@ -63,7 +64,7 @@ describe('Integration Tests - Purchase API', () => {
     });
     
     if (accountsResult.isError) {
-      console.log('Skipping lifecycle test - could not fetch accounts');
+      testInfo('Skipping lifecycle test - could not fetch accounts');
       return;
     }
     
@@ -74,7 +75,7 @@ describe('Integration Tests - Purchase API', () => {
     const expenseAccount = accounts.find((a: any) => a.AccountType === 'Expense');
     
     if (!bankAccount || !expenseAccount) {
-      console.log('Skipping lifecycle test - required accounts not found');
+      testInfo('Skipping lifecycle test - required accounts not found');
       return;
     }
     
@@ -158,7 +159,7 @@ describe('Advanced Search Filters Integration Test', () => {
     assert.ok(!result.isError, `Search failed: ${result.error}`);
     
     const purchases = (result.result as any)?.QueryResponse?.Purchase || [];
-    console.log(`Found ${purchases.length} purchases with TxnDate >= ${dateFrom}`);
+    testInfo(`Found ${purchases.length} purchases with TxnDate >= ${dateFrom}`);
     
     // Verify we can retrieve purchases (the API call works)
     assert.ok(Array.isArray(purchases), 'Should return an array of purchases');
@@ -188,7 +189,7 @@ describe('Advanced Search Filters Integration Test', () => {
     assert.ok(!result.isError, `Search failed: ${result.error}`);
     
     const purchases = (result.result as any)?.QueryResponse?.Purchase || [];
-    console.log(`Found ${purchases.length} purchases with amount criteria`);
+    testInfo(`Found ${purchases.length} purchases with amount criteria`);
     
     // Verify the API call succeeded and returns expected structure
     assert.ok(Array.isArray(purchases), 'Should return an array of purchases');
@@ -207,13 +208,13 @@ describe('Advanced Search Filters Integration Test', () => {
     // Get a customer to filter by
     const customerResult = await searchQuickbooksCustomers({ limit: 1 });
     if (customerResult.isError) {
-      console.log('Could not fetch customers - skipping invoice filter test');
+      testInfo('Could not fetch customers - skipping invoice filter test');
       return;
     }
     
     const customers = (customerResult.result as any)?.QueryResponse?.Customer || [];
     if (customers.length === 0) {
-      console.log('No customers found - skipping invoice filter test');
+      testInfo('No customers found - skipping invoice filter test');
       return;
     }
     
@@ -230,7 +231,7 @@ describe('Advanced Search Filters Integration Test', () => {
     assert.ok(!result.isError, `Invoice search failed: ${result.error}`);
     
     const invoices = (result.result as any)?.QueryResponse?.Invoice || [];
-    console.log(`Found ${invoices.length} invoices for customer ${customerId}`);
+    testInfo(`Found ${invoices.length} invoices for customer ${customerId}`);
     
     // Verify the API call succeeded
     assert.ok(Array.isArray(invoices), 'Should return an array of invoices');
@@ -243,4 +244,4 @@ describe('Advanced Search Filters Integration Test', () => {
   });
 });
 
-console.log('Integration tests: Purchase loaded successfully');
+// Integration tests: Purchase loaded
