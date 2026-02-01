@@ -79,8 +79,10 @@ export const SearchVendorsTool: ToolDefinition<typeof toolSchema> = {
   name: toolName,
   description: toolDescription,
   schema: toolSchema,
-  handler: async (args: { params?: ToolInput }) => {
-    const { criteria = [], ...options } = args.params ?? ({} as ToolInput);
+  handler: async (args: { params?: ToolInput } | ToolInput) => {
+    // Accept both { params: ... } (SDK) and direct args (mcporter)
+    const input: ToolInput = (args as any).params ?? args;
+    const { criteria = [], ...options } = input ?? ({} as ToolInput);
 
     // build criteria to pass to SDK, supporting advanced operator syntax
     let criteriaToSend: Array<AdvancedCriterion | SimpleCriterion> | Record<string, unknown>;

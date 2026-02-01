@@ -1,7 +1,11 @@
 import { quickbooksClient } from '../clients/quickbooks-client.js';
 import { ToolResponse } from '../types/tool-response.js';
 import { formatError } from '../helpers/format-error.js';
-import { buildQuickbooksSearchCriteria } from '../helpers/build-quickbooks-search-criteria.js';
+import {
+  buildQuickbooksSearchCriteria,
+  isCountQuery,
+  extractQueryResult,
+} from '../helpers/build-quickbooks-search-criteria.js';
 
 /**
  * Search estimates from QuickBooks Online using the supplied criteria.
@@ -10,12 +14,13 @@ import { buildQuickbooksSearchCriteria } from '../helpers/build-quickbooks-searc
  */
 export async function searchQuickbooksEstimates(
   params: object | Array<Record<string, any>> = {}
-): Promise<ToolResponse<any[]>> {
+): Promise<ToolResponse<any[] | number>> {
   try {
     await quickbooksClient.authenticate();
     const quickbooks = quickbooksClient.getQuickbooks();
 
     const criteria = buildQuickbooksSearchCriteria(params);
+    const countMode = isCountQuery(criteria);
 
     return new Promise((resolve) => {
       (quickbooks as any).findEstimates(criteria as any, (err: any, estimates: any) => {
@@ -26,9 +31,9 @@ export async function searchQuickbooksEstimates(
             error: formatError(err),
           });
         } else {
+          const result = extractQueryResult(estimates, 'Estimate', countMode);
           resolve({
-            result:
-              estimates?.QueryResponse?.Estimate ?? estimates?.QueryResponse?.totalCount ?? [],
+            result,
             isError: false,
             error: null,
           });

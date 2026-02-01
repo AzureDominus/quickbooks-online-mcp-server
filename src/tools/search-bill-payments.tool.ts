@@ -238,7 +238,8 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
       };
     }
 
-    const results = response.result?.QueryResponse?.BillPayment || response.result || [];
+    // Handler now returns the extracted array directly
+    const results = response.result || [];
     const resultArray = Array.isArray(results) ? results : [results];
 
     logger.info('Bill payment search completed', {

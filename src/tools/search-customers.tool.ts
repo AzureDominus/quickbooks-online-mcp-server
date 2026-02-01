@@ -61,12 +61,14 @@ type ToolInput = z.infer<typeof toolSchema>;
 type AdvancedCriterion = z.infer<typeof advancedCriterionSchema>;
 type SimpleCriterion = z.infer<typeof criterionSchema>;
 
-const toolHandler = async (args: { params?: ToolInput }) => {
-  logToolRequest('search_customers', args.params);
+const toolHandler = async (args: { params?: ToolInput } | ToolInput) => {
+  // Accept both { params: ... } (SDK) and direct args (mcporter)
+  const input: ToolInput = (args as any).params ?? args;
+  logToolRequest('search_customers', input);
   const startTime = Date.now();
 
   try {
-    const { criteria = [], ...options } = args.params ?? ({} as ToolInput);
+    const { criteria = [], ...options } = input ?? ({} as ToolInput);
 
     // Build criteria to send to SDK. If user provided the advanced array with field/operator/value
     // we pass it straight through. Otherwise we transform legacy {key,value} pairs to object.
@@ -125,7 +127,7 @@ const toolHandler = async (args: { params?: ToolInput }) => {
     };
   } catch (error) {
     logToolResponse('search_customers', false, Date.now() - startTime);
-    logger.error('Customers search failed', error, { params: args.params });
+    logger.error('Customers search failed', error, { params: input });
     throw error;
   }
 };

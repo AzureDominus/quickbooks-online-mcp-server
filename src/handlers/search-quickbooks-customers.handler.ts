@@ -1,7 +1,8 @@
-import { quickbooksClient } from "../clients/quickbooks-client.js";
-import { ToolResponse } from "../types/tool-response.js";
-import { formatError } from "../helpers/format-error.js";
-import { sanitizeQueryValue } from "../helpers/sanitize.js";
+import { quickbooksClient } from '../clients/quickbooks-client.js';
+import { ToolResponse } from '../types/tool-response.js';
+import { formatError } from '../helpers/format-error.js';
+import { sanitizeQueryValue } from '../helpers/sanitize.js';
+import { extractQueryResult } from '../helpers/build-quickbooks-search-criteria.js';
 
 interface CustomerSearchCriterion {
   field: string;
@@ -31,21 +32,34 @@ interface CustomerSearchParams {
  * `fetchAll`, `count` can be supplied via the top‑level criteria object or as
  * dedicated entries in the array form (see README in user prompt).
  */
-export async function searchQuickbooksCustomers(params: CustomerSearchParams | Array<Record<string, any>> = {}): Promise<ToolResponse<any[]>> {
+export async function searchQuickbooksCustomers(
+  params: CustomerSearchParams | Array<Record<string, any>> = {}
+): Promise<ToolResponse<any[] | number>> {
   try {
     await quickbooksClient.authenticate();
     const quickbooks = quickbooksClient.getQuickbooks();
 
     // Build the criteria array for node-quickbooks findCustomers
     // node-quickbooks accepts an array of {field, value, operator?} objects
-    let criteriaArray: Array<{ field: string; value: any; operator?: string }> = [];
+    let criteriaArray: Array<Record<string, any>> = [];
+    let countMode = false;
 
     if (Array.isArray(params)) {
       // Legacy array format - pass through directly with type assertion
-      criteriaArray = params as Array<{ field: string; value: any; operator?: string }>;
+      criteriaArray = params as Array<Record<string, any>>;
+      // Check if count mode is requested in array format
+      countMode = params.some((c) => c.count === true);
     } else {
       // Object format with criteria array and options
       const { criteria = [], asc, desc, limit, offset, count, fetchAll } = params;
+      countMode = !!count;
+
+      // Handle count mode: node-quickbooks looks for a top-level `count: true` property,
+      // NOT `{field: 'count', value: true}`. We must insert it at index 0 to work around
+      // a splice bug in node-quickbooks that removes extra elements at higher indices.
+      if (count) {
+        criteriaArray.push({ count: true });
+      }
 
       // Add filter criteria
       for (const c of criteria) {
@@ -74,11 +88,6 @@ export async function searchQuickbooksCustomers(params: CustomerSearchParams | A
         criteriaArray.push({ field: 'offset', value: offset });
       }
 
-      // Add count flag
-      if (count) {
-        criteriaArray.push({ field: 'count', value: true });
-      }
-
       // Add fetchAll flag
       if (fetchAll) {
         criteriaArray.push({ field: 'fetchAll', value: true });
@@ -94,11 +103,9 @@ export async function searchQuickbooksCustomers(params: CustomerSearchParams | A
             error: formatError(err),
           });
         } else {
+          const result = extractQueryResult(customers, 'Customer', countMode);
           resolve({
-            result:
-              customers?.QueryResponse?.Customer ??
-              customers?.QueryResponse?.totalCount ??
-              [],
+            result,
             isError: false,
             error: null,
           });
@@ -112,4 +119,4 @@ export async function searchQuickbooksCustomers(params: CustomerSearchParams | A
       error: formatError(error),
     };
   }
-} 
+}

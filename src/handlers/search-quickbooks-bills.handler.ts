@@ -1,7 +1,11 @@
 import { quickbooksClient } from '../clients/quickbooks-client.js';
 import { ToolResponse } from '../types/tool-response.js';
 import { formatError } from '../helpers/format-error.js';
-import { buildQuickbooksSearchCriteria } from '../helpers/build-quickbooks-search-criteria.js';
+import {
+  buildQuickbooksSearchCriteria,
+  isCountQuery,
+  extractQueryResult,
+} from '../helpers/build-quickbooks-search-criteria.js';
 
 /**
  * Search bills from QuickBooks Online.
@@ -18,12 +22,13 @@ import { buildQuickbooksSearchCriteria } from '../helpers/build-quickbooks-searc
  */
 export async function searchQuickbooksBills(
   params: object | Array<Record<string, any>> = {}
-): Promise<ToolResponse<any[]>> {
+): Promise<ToolResponse<any[] | number>> {
   try {
     await quickbooksClient.authenticate();
     const quickbooks = quickbooksClient.getQuickbooks();
 
     const criteria = buildQuickbooksSearchCriteria(params);
+    const countMode = isCountQuery(criteria);
 
     return new Promise((resolve) => {
       (quickbooks as any).findBills(criteria as any, (err: any, bills: any) => {
@@ -34,8 +39,9 @@ export async function searchQuickbooksBills(
             error: formatError(err),
           });
         } else {
+          const result = extractQueryResult(bills, 'Bill', countMode);
           resolve({
-            result: bills?.QueryResponse?.Bill ?? bills?.QueryResponse?.totalCount ?? [],
+            result,
             isError: false,
             error: null,
           });
