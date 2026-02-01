@@ -1,11 +1,10 @@
 import crypto from 'crypto';
-import dotenv from "dotenv";
-import QuickBooks from "node-quickbooks";
-import OAuthClient from "intuit-oauth";
+import dotenv from 'dotenv';
+import QuickBooks from 'node-quickbooks';
+import OAuthClient from 'intuit-oauth';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import open from 'open';
 import os from 'os';
 import { logger } from '../helpers/logger.js';
@@ -15,7 +14,6 @@ import { qboCircuitBreaker } from '../helpers/circuit-breaker.js';
 
 dotenv.config();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const client_id = process.env.QUICKBOOKS_CLIENT_ID;
 const client_secret = process.env.QUICKBOOKS_CLIENT_SECRET;
 const environment = process.env.QUICKBOOKS_ENVIRONMENT || 'sandbox';
@@ -26,7 +24,8 @@ const redirect_uri = `http://localhost:${oauth_port}/callback`;
 const QUICKBOOKS_TIMEOUT_MS = parseInt(process.env.QUICKBOOKS_TIMEOUT_MS || '30000', 10);
 
 // Token storage path - configurable via env var, defaults to ~/.config/quickbooks-mcp/tokens.json
-const TOKEN_STORAGE_PATH = process.env.QUICKBOOKS_TOKEN_PATH || 
+const TOKEN_STORAGE_PATH =
+  process.env.QUICKBOOKS_TOKEN_PATH ||
   path.join(os.homedir(), '.config', 'quickbooks-mcp', 'tokens.json');
 
 interface StoredTokens {
@@ -40,7 +39,7 @@ function loadStoredTokens(): StoredTokens | null {
     if (fs.existsSync(TOKEN_STORAGE_PATH)) {
       const fileContent = fs.readFileSync(TOKEN_STORAGE_PATH, 'utf-8');
       let data: StoredTokens;
-      
+
       // Check if the file contains encrypted data
       if (isEncrypted(fileContent)) {
         // Decrypt the entire token file
@@ -55,7 +54,7 @@ function loadStoredTokens(): StoredTokens | null {
           saveTokens(data);
         }
       }
-      
+
       // Only use stored tokens if environment matches
       if (data.environment === environment) {
         return data;
@@ -63,7 +62,9 @@ function loadStoredTokens(): StoredTokens | null {
     }
   } catch (e) {
     // Ignore errors, will trigger new OAuth flow
-    logger.warn('Failed to load stored tokens', { error: e instanceof Error ? e.message : String(e) });
+    logger.warn('Failed to load stored tokens', {
+      error: e instanceof Error ? e.message : String(e),
+    });
   }
   return null;
 }
@@ -89,7 +90,7 @@ const realm_id = storedTokens?.realm_id || process.env.QUICKBOOKS_REALM_ID;
 
 // Only throw error if client_id or client_secret is missing
 if (!client_id || !client_secret || !redirect_uri) {
-  throw Error("Client ID, Client Secret and Redirect URI must be set in environment variables");
+  throw Error('Client ID, Client Secret and Redirect URI must be set in environment variables');
 }
 
 class QuickbooksClient {
@@ -175,12 +176,12 @@ class QuickbooksClient {
           try {
             const response = await this.oauthClient.createToken(req.url);
             const tokens = response.token;
-            
+
             // Save tokens
             this.refreshToken = tokens.refresh_token;
             this.realmId = tokens.realmId;
             this.saveTokensToEnv();
-            
+
             // Send success response
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(`
@@ -200,7 +201,7 @@ class QuickbooksClient {
                 </body>
               </html>
             `);
-            
+
             // Close server after a short delay
             setTimeout(() => {
               server.close();
@@ -208,7 +209,10 @@ class QuickbooksClient {
               resolve();
             }, 1000);
           } catch (error) {
-            logger.error('OAuth token creation failed', error instanceof Error ? error : new Error(String(error)));
+            logger.error(
+              'OAuth token creation failed',
+              error instanceof Error ? error : new Error(String(error))
+            );
             res.writeHead(500, { 'Content-Type': 'text/html' });
             res.end(`
               <html>
@@ -237,20 +241,25 @@ class QuickbooksClient {
       server.listen(port, async () => {
         // Generate cryptographic random state for CSRF protection
         this.oauthState = crypto.randomBytes(32).toString('hex');
-        
+
         // Generate authorization URL with proper type assertion
-        const authUri = this.oauthClient.authorizeUri({
-          scope: [OAuthClient.scopes.Accounting as string],
-          state: this.oauthState
-        }).toString();
-        
+        const authUri = this.oauthClient
+          .authorizeUri({
+            scope: [OAuthClient.scopes.Accounting as string],
+            state: this.oauthState,
+          })
+          .toString();
+
         // Open browser automatically
         await open(authUri);
       });
 
       // Handle server errors
       server.on('error', (error) => {
-        logger.error('OAuth callback server error', error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'OAuth callback server error',
+          error instanceof Error ? error : new Error(String(error))
+        );
         this.isAuthenticating = false;
         reject(error);
       });
@@ -270,7 +279,7 @@ class QuickbooksClient {
   async refreshAccessToken(): Promise<{ access_token: string; expires_in: number }> {
     if (!this.refreshToken) {
       await this.startOAuthFlow();
-      
+
       // Verify we have a refresh token after OAuth flow
       if (!this.refreshToken) {
         throw new Error('Failed to obtain refresh token from OAuth flow');
@@ -284,23 +293,23 @@ class QuickbooksClient {
         {
           maxRetries: 3,
           initialDelayMs: 1000,
-          retryableStatuses: [429, 500, 502, 503, 504]
+          retryableStatuses: [429, 500, 502, 503, 504],
         }
       );
-      
+
       this.accessToken = authResponse.token.access_token;
-      
+
       // Update refresh token if a new one was provided (OAuth may rotate tokens)
       const tokenData = authResponse.token as any;
       if (tokenData.refresh_token) {
         this.refreshToken = tokenData.refresh_token;
         this.saveTokensToEnv();
       }
-      
+
       // Calculate expiry time
       const expiresIn = authResponse.token.expires_in || 3600; // Default to 1 hour
       this.accessTokenExpiry = new Date(Date.now() + expiresIn * 1000);
-      
+
       return {
         access_token: this.accessToken,
         expires_in: expiresIn,
@@ -308,31 +317,31 @@ class QuickbooksClient {
     } catch (error: any) {
       // Detect expired or revoked refresh token errors
       const isExpiredOrRevoked = this.isTokenExpiredOrRevokedError(error);
-      
+
       if (isExpiredOrRevoked) {
         logger.warn('Refresh token expired or revoked, clearing tokens and initiating re-auth', {
           errorMessage: error.message,
-          errorCode: error.code || error.statusCode
+          errorCode: error.code || error.statusCode,
         });
-        
+
         // Clear invalid tokens
         this.clearTokens();
-        
+
         // Attempt to start new OAuth flow
         await this.startOAuthFlow();
-        
+
         // Verify we got new tokens
         if (!this.refreshToken) {
           throw new Error(
             'Re-authentication required: Your QuickBooks authorization has expired. ' +
-            'Please complete the OAuth flow to continue.'
+              'Please complete the OAuth flow to continue.'
           );
         }
-        
+
         // Retry with new tokens
         return this.refreshAccessToken();
       }
-      
+
       throw new Error(`Failed to refresh QuickBooks token: ${error.message}`);
     }
   }
@@ -346,25 +355,25 @@ class QuickbooksClient {
     const statusCode = error.statusCode || error.status;
     const errorMessage = (error.message || '').toLowerCase();
     const errorDescription = (error.error_description || '').toLowerCase();
-    
+
     // Check for specific OAuth error codes
     const invalidTokenCodes = [
       'invalid_grant',
       'invalid_token',
       'token_expired',
       'token_revoked',
-      'access_denied'
+      'access_denied',
     ];
-    
+
     if (invalidTokenCodes.includes(errorCode.toLowerCase())) {
       return true;
     }
-    
+
     // Check for 401 Unauthorized (token issues)
     if (statusCode === 401) {
       return true;
     }
-    
+
     // Check error message patterns
     const expiredPatterns = [
       'expired',
@@ -372,15 +381,15 @@ class QuickbooksClient {
       'invalid refresh token',
       'refresh token is invalid',
       'token has been revoked',
-      'authorization code has expired'
+      'authorization code has expired',
     ];
-    
+
     for (const pattern of expiredPatterns) {
       if (errorMessage.includes(pattern) || errorDescription.includes(pattern)) {
         return true;
       }
     }
-    
+
     return false;
   }
 
@@ -392,7 +401,7 @@ class QuickbooksClient {
     this.accessToken = undefined;
     this.accessTokenExpiry = undefined;
     this.quickbooksInstance = undefined;
-    
+
     // Remove token file
     try {
       if (fs.existsSync(TOKEN_STORAGE_PATH)) {
@@ -400,8 +409,8 @@ class QuickbooksClient {
         logger.info('Cleared stored tokens', { tokenPath: TOKEN_STORAGE_PATH });
       }
     } catch (e) {
-      logger.warn('Failed to clear token file', { 
-        error: e instanceof Error ? e.message : String(e) 
+      logger.warn('Failed to clear token file', {
+        error: e instanceof Error ? e.message : String(e),
       });
     }
   }
@@ -424,7 +433,7 @@ class QuickbooksClient {
   async authenticate() {
     if (!this.refreshToken || !this.realmId) {
       await this.startOAuthFlow();
-      
+
       // Verify we have both tokens after OAuth flow
       if (!this.refreshToken || !this.realmId) {
         throw new Error('Failed to obtain required tokens from OAuth flow');
@@ -437,11 +446,11 @@ class QuickbooksClient {
       const tokenResponse = await this.refreshAccessToken();
       this.accessToken = tokenResponse.access_token;
     }
-    
+
     // At this point we know all tokens are available
     // Use non-null assertion since we validated above
     const accessToken = this.accessToken!;
-    
+
     this.quickbooksInstance = new QuickBooks(
       this.clientId,
       this.clientSecret,
@@ -454,10 +463,10 @@ class QuickbooksClient {
       '2.0', // oauth version
       this.refreshToken
     );
-    
+
     return this.quickbooksInstance;
   }
-  
+
   getQuickbooks() {
     if (!this.quickbooksInstance) {
       throw new Error('Quickbooks not authenticated. Call authenticate() first');
@@ -468,11 +477,11 @@ class QuickbooksClient {
   /**
    * Execute a QuickBooks API call with retry logic, timeout, and circuit breaker
    * Wraps callback-style SDK methods with exponential backoff retry
-   * 
+   *
    * @param callbackFn - Function that accepts the SDK callback
    * @param options - Optional retry configuration
    * @returns Promise resolving with the API result
-   * 
+   *
    * @example
    * const result = await quickbooksClient.executeWithRetry<Purchase>(
    *   (cb) => quickbooks.getPurchase(id, cb)

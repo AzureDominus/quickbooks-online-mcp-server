@@ -1,12 +1,12 @@
-import { createQuickbooksBillPayment } from "../handlers/create-quickbooks-bill-payment.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
-import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
-import { CreateBillPaymentInputSchema } from "../types/qbo-schemas.js";
+import { createQuickbooksBillPayment } from '../handlers/create-quickbooks-bill-payment.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
+import { CreateBillPaymentInputSchema } from '../types/qbo-schemas.js';
 
 // Define the tool metadata
-const toolName = "create_bill_payment";
+const toolName = 'create_bill_payment';
 const toolDescription = `Create a bill payment in QuickBooks Online.
 
 IDEMPOTENCY:
@@ -16,10 +16,8 @@ IDEMPOTENCY:
 // Define the expected input schema for creating a bill payment
 const toolSchema = z.object({
   billPayment: CreateBillPaymentInputSchema,
-  idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate creation"),
+  idempotencyKey: z.string().optional().describe('Optional key to prevent duplicate creation'),
 });
-
-type ToolParams = z.infer<typeof toolSchema>;
 
 // Define the tool handler
 const toolHandler = async (args: any) => {
@@ -27,7 +25,7 @@ const toolHandler = async (args: any) => {
   const input = args.billPayment;
   const idempotencyKey = args.idempotencyKey as string | undefined;
 
-  logToolRequest(toolName, { 
+  logToolRequest(toolName, {
     hasIdempotencyKey: !!idempotencyKey,
   });
 
@@ -39,12 +37,12 @@ const toolHandler = async (args: any) => {
         idempotencyKey,
         existingId,
       });
-      
+
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Bill payment already exists (idempotent):` },
-          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+          { type: 'text' as const, text: `Bill payment already exists (idempotent):` },
+          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
     }
@@ -60,7 +58,7 @@ const toolHandler = async (args: any) => {
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Error creating bill payment: ${response.error}` },
+          { type: 'text' as const, text: `Error creating bill payment: ${response.error}` },
         ],
       };
     }
@@ -77,15 +75,20 @@ const toolHandler = async (args: any) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Bill payment created:` },
-        { type: "text" as const, text: JSON.stringify(response.result) },
+        { type: 'text' as const, text: `Bill payment created:` },
+        { type: 'text' as const, text: JSON.stringify(response.result) },
       ],
     };
   } catch (error) {
     logger.error('Unexpected error in create_bill_payment', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
-      content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
     };
   }
 };
@@ -95,4 +98,4 @@ export const CreateBillPaymentTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

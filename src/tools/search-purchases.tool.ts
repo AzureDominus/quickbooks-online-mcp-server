@@ -1,12 +1,11 @@
-import { searchQuickbooksPurchases } from "../handlers/search-quickbooks-purchases.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { SearchPurchasesInputSchema, type SearchPurchasesInput } from "../types/qbo-schemas.js";
-import { buildPurchaseSearchCriteria, transformPurchaseFromQBO } from "../helpers/transform.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { searchQuickbooksPurchases } from '../handlers/search-quickbooks-purchases.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { SearchPurchasesInputSchema, type SearchPurchasesInput } from '../types/qbo-schemas.js';
+import { buildPurchaseSearchCriteria, transformPurchaseFromQBO } from '../helpers/transform.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "search_purchases";
+const toolName = 'search_purchases';
 const toolDescription = `Search expense/purchase transactions in QuickBooks Online with advanced filtering.
 
 Supports filtering by date range, amount range, vendor, payment account, payment type, and text search.
@@ -50,15 +49,15 @@ const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
   // Args are passed directly as the schema result
   const input = args as SearchPurchasesInput;
-  
+
   logToolRequest(toolName, input);
 
   try {
     // Build search criteria from input
     const { criteria, options } = buildPurchaseSearchCriteria(input);
-    
-    logger.debug('Built search criteria', { 
-      criteriaCount: criteria.length, 
+
+    logger.debug('Built search criteria', {
+      criteriaCount: criteria.length,
       options,
     });
 
@@ -74,9 +73,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
       logger.error('Failed to search purchases', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error searching purchases: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error searching purchases: ${response.error}` }],
       };
     }
 
@@ -84,18 +81,16 @@ const toolHandler = async (args: Record<string, unknown>) => {
     if (input.count && typeof response.result === 'number') {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Found ${response.result} matching purchases` },
-        ],
+        content: [{ type: 'text' as const, text: `Found ${response.result} matching purchases` }],
       };
     }
 
     // Transform results to user-friendly format
     const purchases = response.result?.QueryResponse?.Purchase || response.result || [];
     const purchaseArray = Array.isArray(purchases) ? purchases : [purchases];
-    
+
     const transformedResults = purchaseArray.map(transformPurchaseFromQBO);
-    
+
     logger.info('Purchase search completed', {
       resultCount: transformedResults.length,
       limit: input.limit,
@@ -126,8 +121,8 @@ const toolHandler = async (args: Record<string, unknown>) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Found ${transformedResults.length} purchases:` },
-        { type: "text" as const, text: JSON.stringify(responseData, null, 2) },
+        { type: 'text' as const, text: `Found ${transformedResults.length} purchases:` },
+        { type: 'text' as const, text: JSON.stringify(responseData, null, 2) },
       ],
     };
   } catch (error) {
@@ -135,7 +130,10 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -146,4 +144,4 @@ export const SearchPurchasesTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

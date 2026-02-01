@@ -1,11 +1,10 @@
-import { searchQuickbooksBills } from "../handlers/search-quickbooks-bills.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { SearchBillsInputSchema, type SearchBillsInput } from "../types/qbo-schemas.js";
-import { buildBillSearchCriteria, transformBillFromQBO } from "../helpers/transform.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { searchQuickbooksBills } from '../handlers/search-quickbooks-bills.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { SearchBillsInputSchema, type SearchBillsInput } from '../types/qbo-schemas.js';
+import { buildBillSearchCriteria, transformBillFromQBO } from '../helpers/transform.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
-const toolName = "search_bills";
+const toolName = 'search_bills';
 const toolDescription = `Search bills in QuickBooks Online with advanced filtering.
 
 Supports filtering by date range, due date range, amount range, balance range, vendor, payment status, and document number.
@@ -49,15 +48,15 @@ const toolSchema = SearchBillsInputSchema;
 const toolHandler = async (args: { [x: string]: any }) => {
   const startTime = Date.now();
   const input = args as SearchBillsInput;
-  
+
   logToolRequest(toolName, input);
 
   try {
     // Build search criteria from input
     const { criteria, options } = buildBillSearchCriteria(input);
-    
-    logger.debug('Built bill search criteria', { 
-      criteriaCount: criteria.length, 
+
+    logger.debug('Built bill search criteria', {
+      criteriaCount: criteria.length,
       options,
     });
 
@@ -73,9 +72,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logger.error('Failed to search bills', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error searching bills: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error searching bills: ${response.error}` }],
       };
     }
 
@@ -83,9 +80,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
     if (input.count && typeof response.result === 'number') {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Found ${response.result} matching bills` },
-        ],
+        content: [{ type: 'text' as const, text: `Found ${response.result} matching bills` }],
       };
     }
 
@@ -93,16 +88,16 @@ const toolHandler = async (args: { [x: string]: any }) => {
     // Note: handler already extracts QueryResponse.Bill, so result is the array directly
     const bills = response.result || [];
     const billArray = Array.isArray(bills) ? bills : [bills];
-    
+
     // Filter for PartiallyPaid if needed (QBO can't distinguish partial payments in query)
     let transformedResults = billArray.map(transformBillFromQBO);
-    
+
     if (input.paymentStatus === 'PartiallyPaid') {
       transformedResults = transformedResults.filter(
         (bill) => bill.paymentStatus === 'PartiallyPaid'
       );
     }
-    
+
     logger.info('Bill search completed', {
       resultCount: transformedResults.length,
       limit: input.limit,
@@ -136,8 +131,8 @@ const toolHandler = async (args: { [x: string]: any }) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Found ${transformedResults.length} bills:` },
-        { type: "text" as const, text: JSON.stringify(responseData, null, 2) },
+        { type: 'text' as const, text: `Found ${transformedResults.length} bills:` },
+        { type: 'text' as const, text: JSON.stringify(responseData, null, 2) },
       ],
     };
   } catch (error) {
@@ -145,7 +140,10 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -156,4 +154,4 @@ export const SearchBillsTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

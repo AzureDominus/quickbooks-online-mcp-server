@@ -1,12 +1,12 @@
-import { createQuickbooksEmployee } from "../handlers/create-quickbooks-employee.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
-import { CreateEmployeeInputSchema } from "../types/qbo-schemas.js";
+import { createQuickbooksEmployee } from '../handlers/create-quickbooks-employee.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { CreateEmployeeInputSchema } from '../types/qbo-schemas.js';
 
 // Define the tool metadata
-const toolName = "create_employee";
+const toolName = 'create_employee';
 const toolDescription = `Create an employee in QuickBooks Online.
 
 IDEMPOTENCY:
@@ -16,15 +16,16 @@ IDEMPOTENCY:
 // Define the expected input schema for creating an employee
 const toolSchema = z.object({
   employee: CreateEmployeeInputSchema,
-  idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate employee creation on retry"),
+  idempotencyKey: z
+    .string()
+    .optional()
+    .describe('Optional key to prevent duplicate employee creation on retry'),
 });
-
-type ToolParams = z.infer<typeof toolSchema>;
 
 // Define the tool handler
 const toolHandler = async (args: any) => {
   const startTime = Date.now();
-  
+
   logToolRequest(toolName, args);
 
   try {
@@ -35,12 +36,12 @@ const toolHandler = async (args: any) => {
         idempotencyKey: args.idempotencyKey,
         existingId,
       });
-      
+
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Employee already exists (idempotent):` },
-          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+          { type: 'text' as const, text: `Employee already exists (idempotent):` },
+          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
     }
@@ -51,9 +52,7 @@ const toolHandler = async (args: any) => {
       logger.error('Failed to create employee', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error creating employee: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error creating employee: ${response.error}` }],
       };
     }
 
@@ -70,8 +69,8 @@ const toolHandler = async (args: any) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Employee created:` },
-        { type: "text" as const, text: JSON.stringify(response.result) },
+        { type: 'text' as const, text: `Employee created:` },
+        { type: 'text' as const, text: JSON.stringify(response.result) },
       ],
     };
   } catch (error) {
@@ -79,7 +78,10 @@ const toolHandler = async (args: any) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -90,4 +92,4 @@ export const CreateEmployeeTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

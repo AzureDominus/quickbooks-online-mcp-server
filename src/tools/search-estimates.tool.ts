@@ -1,12 +1,11 @@
-import { searchQuickbooksEstimates } from "../handlers/search-quickbooks-estimates.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { SearchEstimatesInputSchema, type SearchEstimatesInput } from "../types/qbo-schemas.js";
-import { buildEstimateSearchCriteria } from "../helpers/transform.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { searchQuickbooksEstimates } from '../handlers/search-quickbooks-estimates.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { SearchEstimatesInputSchema, type SearchEstimatesInput } from '../types/qbo-schemas.js';
+import { buildEstimateSearchCriteria } from '../helpers/transform.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "search_estimates";
+const toolName = 'search_estimates';
 const toolDescription = `Search estimates in QuickBooks Online with advanced filtering.
 
 Supports filtering by date range, expiration date range, amount range, customer, and status.
@@ -49,15 +48,15 @@ const toolSchema = SearchEstimatesInputSchema;
 const toolHandler = async (args: { [x: string]: any }) => {
   const startTime = Date.now();
   const input = args as SearchEstimatesInput;
-  
+
   logToolRequest(toolName, input);
 
   try {
     // Build search criteria from input
     const { criteria, options } = buildEstimateSearchCriteria(input);
-    
-    logger.debug('Built estimate search criteria', { 
-      criteriaCount: criteria.length, 
+
+    logger.debug('Built estimate search criteria', {
+      criteriaCount: criteria.length,
       options,
     });
 
@@ -73,9 +72,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logger.error('Failed to search estimates', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error searching estimates: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error searching estimates: ${response.error}` }],
       };
     }
 
@@ -83,16 +80,14 @@ const toolHandler = async (args: { [x: string]: any }) => {
     if (input.count && typeof response.result === 'number') {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Found ${response.result} matching estimates` },
-        ],
+        content: [{ type: 'text' as const, text: `Found ${response.result} matching estimates` }],
       };
     }
 
     // Get estimates from response (handler already extracts from QueryResponse)
     const estimates = response.result || [];
     const estimateArray = Array.isArray(estimates) ? estimates : [estimates];
-    
+
     logger.info('Estimate search completed', {
       resultCount: estimateArray.length,
       limit: input.limit,
@@ -124,8 +119,8 @@ const toolHandler = async (args: { [x: string]: any }) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Found ${estimateArray.length} estimates:` },
-        { type: "text" as const, text: JSON.stringify(responseData, null, 2) },
+        { type: 'text' as const, text: `Found ${estimateArray.length} estimates:` },
+        { type: 'text' as const, text: JSON.stringify(responseData, null, 2) },
       ],
     };
   } catch (error) {
@@ -133,7 +128,10 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -144,4 +142,4 @@ export const SearchEstimatesTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

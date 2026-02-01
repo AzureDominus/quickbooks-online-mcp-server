@@ -1,18 +1,16 @@
 /**
  * Transform Helpers for QuickBooks MCP Server
- * 
+ *
  * Converts user-friendly input schemas to QBO API format and vice versa.
  */
 
-import { 
-  CreatePurchaseInput, 
+import {
+  CreatePurchaseInput,
   SimplifiedExpenseLineSchema,
   SearchPurchasesInput,
   SearchBillsInput,
   SearchInvoicesInput,
   SearchEstimatesInput,
-  Purchase,
-  Reference,
 } from '../types/qbo-schemas.js';
 import { z } from 'zod';
 import { sanitizeLikePattern } from './sanitize.js';
@@ -205,7 +203,7 @@ export function buildPurchaseSearchCriteria(input: SearchPurchasesInput): {
 
   // Build options
   const options: Record<string, unknown> = {};
-  
+
   if (input.asc) options.asc = input.asc;
   if (input.desc) options.desc = input.desc;
   if (input.limit) options.limit = input.limit;
@@ -318,7 +316,7 @@ export function buildInvoiceSearchCriteria(input: SearchInvoicesInput): {
 
   // Build options
   const options: Record<string, unknown> = {};
-  
+
   if (input.asc) options.asc = input.asc;
   if (input.desc) options.desc = input.desc;
   if (input.limit) options.limit = input.limit;
@@ -462,7 +460,7 @@ export function buildBillSearchCriteria(input: SearchBillsInput): {
 
   // Build options
   const options: Record<string, unknown> = {};
-  
+
   if (input.asc) options.asc = input.asc;
   if (input.desc) options.desc = input.desc;
   if (input.limit) options.limit = input.limit;
@@ -570,7 +568,7 @@ export function buildEstimateSearchCriteria(input: SearchEstimatesInput): {
 
   // Build options
   const options: Record<string, unknown> = {};
-  
+
   if (input.asc) options.asc = input.asc;
   if (input.desc) options.desc = input.desc;
   if (input.limit) options.limit = input.limit;
@@ -653,10 +651,12 @@ export function transformBillFromQBO(bill: any): Record<string, unknown> {
           id: line.AccountBasedExpenseLineDetail.AccountRef?.value,
           name: line.AccountBasedExpenseLineDetail.AccountRef?.name,
         },
-        customer: line.AccountBasedExpenseLineDetail.CustomerRef ? {
-          id: line.AccountBasedExpenseLineDetail.CustomerRef.value,
-          name: line.AccountBasedExpenseLineDetail.CustomerRef.name,
-        } : undefined,
+        customer: line.AccountBasedExpenseLineDetail.CustomerRef
+          ? {
+              id: line.AccountBasedExpenseLineDetail.CustomerRef.value,
+              name: line.AccountBasedExpenseLineDetail.CustomerRef.name,
+            }
+          : undefined,
         billableStatus: line.AccountBasedExpenseLineDetail.BillableStatus,
         taxCode: line.AccountBasedExpenseLineDetail.TaxCodeRef?.value,
       }),
@@ -667,10 +667,12 @@ export function transformBillFromQBO(bill: any): Record<string, unknown> {
         },
         qty: line.ItemBasedExpenseLineDetail.Qty,
         unitPrice: line.ItemBasedExpenseLineDetail.UnitPrice,
-        customer: line.ItemBasedExpenseLineDetail.CustomerRef ? {
-          id: line.ItemBasedExpenseLineDetail.CustomerRef.value,
-          name: line.ItemBasedExpenseLineDetail.CustomerRef.name,
-        } : undefined,
+        customer: line.ItemBasedExpenseLineDetail.CustomerRef
+          ? {
+              id: line.ItemBasedExpenseLineDetail.CustomerRef.value,
+              name: line.ItemBasedExpenseLineDetail.CustomerRef.name,
+            }
+          : undefined,
         billableStatus: line.ItemBasedExpenseLineDetail.BillableStatus,
         taxCode: line.ItemBasedExpenseLineDetail.TaxCodeRef?.value,
       }),
@@ -819,12 +821,14 @@ export function validateReferences(input: CreatePurchaseInput): string[] {
 /**
  * Build a complete criteria array for node-quickbooks from our search options
  */
-export function buildSearchCriteriaForNodeQB(input: SearchPurchasesInput): Array<Record<string, unknown>> {
-  const { criteria, options } = buildPurchaseSearchCriteria(input);
-  
+export function buildSearchCriteriaForNodeQB(
+  input: SearchPurchasesInput
+): Array<Record<string, unknown>> {
+  const { criteria, options: _options } = buildPurchaseSearchCriteria(input);
+
   // node-quickbooks expects criteria as an array of {field, value, operator} objects
   // and options passed separately
-  return criteria.map(c => ({
+  return criteria.map((c) => ({
     ...c,
     // Add sorting and pagination options to each criteria object
     // (node-quickbooks handles this differently, may need adjustment)

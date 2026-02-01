@@ -1,13 +1,17 @@
-import { createQuickbooksPurchase } from "../handlers/create-quickbooks-purchase.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { CreatePurchaseInputSchema, type CreatePurchaseInput } from "../types/qbo-schemas.js";
-import { transformPurchaseToQBO, transformPurchaseFromQBO, validateReferences } from "../helpers/transform.js";
-import { checkIdempotency, storeIdempotency, IdempotencyService } from "../helpers/idempotency.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { createQuickbooksPurchase } from '../handlers/create-quickbooks-purchase.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { CreatePurchaseInputSchema } from '../types/qbo-schemas.js';
+import {
+  transformPurchaseToQBO,
+  transformPurchaseFromQBO,
+  validateReferences,
+} from '../helpers/transform.js';
+import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "create_purchase";
+const toolName = 'create_purchase';
 const toolDescription = `Create a new expense/purchase transaction in QuickBooks Online.
 
 Creates a Purchase transaction with required date, payment type, payment account, and expense line items.
@@ -67,7 +71,7 @@ type ToolInput = z.infer<typeof toolSchema>;
 const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
   const input = (args as ToolInput).purchase;
-  
+
   logToolRequest(toolName, { ...input, lines: `[${input.lines?.length || 0} lines]` });
 
   try {
@@ -78,12 +82,12 @@ const toolHandler = async (args: Record<string, unknown>) => {
         idempotencyKey: input.idempotencyKey,
         existingId,
       });
-      
+
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Purchase already exists (idempotent):` },
-          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+          { type: 'text' as const, text: `Purchase already exists (idempotent):` },
+          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
     }
@@ -94,7 +98,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
       logger.warn('Purchase validation failed', { errors: validationErrors });
       return {
         content: [
-          { type: "text" as const, text: `Validation error: ${validationErrors.join('; ')}` },
+          { type: 'text' as const, text: `Validation error: ${validationErrors.join('; ')}` },
         ],
       };
     }
@@ -110,9 +114,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
       logger.error('Failed to create purchase', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error creating purchase: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error creating purchase: ${response.error}` }],
       };
     }
 
@@ -123,7 +125,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
 
     // Transform response to user-friendly format
     const transformedResult = transformPurchaseFromQBO(response.result);
-    
+
     logger.info('Purchase created successfully', {
       purchaseId: response.result?.Id,
       totalAmt: response.result?.TotalAmt,
@@ -132,8 +134,8 @@ const toolHandler = async (args: Record<string, unknown>) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Purchase created successfully:` },
-        { type: "text" as const, text: JSON.stringify(transformedResult, null, 2) },
+        { type: 'text' as const, text: `Purchase created successfully:` },
+        { type: 'text' as const, text: JSON.stringify(transformedResult, null, 2) },
       ],
     };
   } catch (error) {
@@ -141,7 +143,10 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -152,4 +157,4 @@ export const CreatePurchaseTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

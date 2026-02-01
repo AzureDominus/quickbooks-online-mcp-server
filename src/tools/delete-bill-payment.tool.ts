@@ -1,11 +1,11 @@
-import { deleteQuickbooksBillPayment } from "../handlers/delete-quickbooks-bill-payment.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { DeleteInputSchema } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { deleteQuickbooksBillPayment } from '../handlers/delete-quickbooks-bill-payment.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { DeleteInputSchema } from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "delete_bill_payment";
+const toolName = 'delete_bill_payment';
 const toolDescription = `Delete (void) a bill payment in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -27,10 +27,8 @@ Example:
 
 // Define the expected input schema for deleting a bill payment
 const toolSchema = z.object({
-  idOrEntity: DeleteInputSchema.describe("Bill payment to delete with Id and SyncToken"),
+  idOrEntity: DeleteInputSchema.describe('Bill payment to delete with Id and SyncToken'),
 });
-
-type ToolParams = z.infer<typeof toolSchema>;
 
 // Define the tool handler
 const toolHandler = async (args: { [x: string]: any }) => {
@@ -47,7 +45,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Error deleting bill payment: ${response.error}` },
+          { type: 'text' as const, text: `Error deleting bill payment: ${response.error}` },
         ],
       };
     }
@@ -57,8 +55,8 @@ const toolHandler = async (args: { [x: string]: any }) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Bill payment deleted successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
+        { type: 'text' as const, text: `Bill payment deleted successfully:` },
+        { type: 'text' as const, text: JSON.stringify(response.result, null, 2) },
       ],
     };
   } catch (error) {
@@ -66,7 +64,10 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -77,4 +78,4 @@ export const DeleteBillPaymentTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

@@ -1,12 +1,11 @@
-import { searchQuickbooksInvoices } from "../handlers/search-quickbooks-invoices.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { SearchInvoicesInputSchema, type SearchInvoicesInput } from "../types/qbo-schemas.js";
-import { buildInvoiceSearchCriteria } from "../helpers/transform.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { searchQuickbooksInvoices } from '../handlers/search-quickbooks-invoices.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { SearchInvoicesInputSchema, type SearchInvoicesInput } from '../types/qbo-schemas.js';
+import { buildInvoiceSearchCriteria } from '../helpers/transform.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "search_invoices";
+const toolName = 'search_invoices';
 const toolDescription = `Search invoices in QuickBooks Online with advanced filtering.
 
 Invoices are sales forms that record sales of products or services to customers.
@@ -65,15 +64,15 @@ const toolHandler = async (args: { [x: string]: any }) => {
   const startTime = Date.now();
   // Args are passed directly as the schema result
   const input = args as SearchInvoicesInput;
-  
+
   logToolRequest(toolName, input);
 
   try {
     // Build search criteria from input
     const { criteria, options } = buildInvoiceSearchCriteria(input);
-    
-    logger.debug('Built invoice search criteria', { 
-      criteriaCount: criteria.length, 
+
+    logger.debug('Built invoice search criteria', {
+      criteriaCount: criteria.length,
       options,
     });
 
@@ -89,9 +88,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logger.error('Failed to search invoices', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error searching invoices: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error searching invoices: ${response.error}` }],
       };
     }
 
@@ -99,15 +96,13 @@ const toolHandler = async (args: { [x: string]: any }) => {
     if (input.count && typeof response.result === 'number') {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Found ${response.result} matching invoices` },
-        ],
+        content: [{ type: 'text' as const, text: `Found ${response.result} matching invoices` }],
       };
     }
 
     const results = response.result || [];
     const resultArray = Array.isArray(results) ? results : [results];
-    
+
     logger.info('Invoice search completed', {
       resultCount: resultArray.length,
       limit: input.limit,
@@ -140,8 +135,8 @@ const toolHandler = async (args: { [x: string]: any }) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Found ${resultArray.length} invoices:` },
-        { type: "text" as const, text: JSON.stringify(responseData, null, 2) },
+        { type: 'text' as const, text: `Found ${resultArray.length} invoices:` },
+        { type: 'text' as const, text: JSON.stringify(responseData, null, 2) },
       ],
     };
   } catch (error) {
@@ -149,7 +144,10 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -160,4 +158,4 @@ export const SearchInvoicesTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};
