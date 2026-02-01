@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import open from 'open';
 import os from 'os';
 import { logger } from '../helpers/logger.js';
+import { withRetry, withCallbackRetry, RetryOptions } from '../helpers/retry.js';
 
 dotenv.config();
 
@@ -252,8 +253,15 @@ class QuickbooksClient {
     }
 
     try {
-      // At this point we know refreshToken is not undefined
-      const authResponse = await this.oauthClient.refreshUsingToken(this.refreshToken);
+      // Wrap token refresh with retry logic for transient failures
+      const authResponse = await withRetry(
+        async () => this.oauthClient.refreshUsingToken(this.refreshToken!),
+        {
+          maxRetries: 3,
+          initialDelayMs: 1000,
+          retryableStatuses: [429, 500, 502, 503, 504]
+        }
+      );
       
       this.accessToken = authResponse.token.access_token;
       
@@ -309,6 +317,26 @@ class QuickbooksClient {
       throw new Error('Quickbooks not authenticated. Call authenticate() first');
     }
     return this.quickbooksInstance;
+  }
+
+  /**
+   * Execute a QuickBooks API call with retry logic for transient failures
+   * Wraps callback-style SDK methods with exponential backoff retry
+   * 
+   * @param callbackFn - Function that accepts the SDK callback
+   * @param options - Optional retry configuration
+   * @returns Promise resolving with the API result
+   * 
+   * @example
+   * const result = await quickbooksClient.executeWithRetry<Purchase>(
+   *   (cb) => quickbooks.getPurchase(id, cb)
+   * );
+   */
+  async executeWithRetry<T>(
+    callbackFn: (callback: (err: any, result: T) => void) => void,
+    options?: RetryOptions
+  ): Promise<T> {
+    return withCallbackRetry(callbackFn, options);
   }
 }
 
