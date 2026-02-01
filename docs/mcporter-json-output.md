@@ -17,7 +17,7 @@ Many tools were returning **multiple `content` entries** and/or mixing human-ori
 
 Common patterns:
 
-1) **Human prefix + JSON block**
+1. **Human prefix + JSON block**
 
 ```ts
 return {
@@ -28,7 +28,7 @@ return {
 };
 ```
 
-2) **One JSON object per line / per content chunk** (especially `search_*` tools)
+2. **One JSON object per line / per content chunk** (especially `search_*` tools)
 
 ```ts
 return {
@@ -80,13 +80,15 @@ return {
 Most tools still return human-readable error strings like:
 
 ```ts
-{ content: [{ type: 'text', text: `Error searching vendors: ${response.error}` }] }
+{
+  content: [{ type: 'text', text: `Error searching vendors: ${response.error}` }];
+}
 ```
 
 This is deliberate for now (easy to read). If we want fully machine-readable errors later, we can standardize to:
 
 ```json
-{"error": {"message": "..."}}
+{ "error": { "message": "..." } }
 ```
 
 ### Tools updated
@@ -119,43 +121,45 @@ mcporter generate-cli --server QuickBooks --output ./generated/QuickBooks.ts --b
 ./bin/quickbooks -o json search-vendors --limit 3
 ```
 
-## Known issue: `count:true` causes QBO query parse errors for some endpoints
+## Fixed: `count:true` now works for all search endpoints
 
-Some endpoints error when `count:true` is supplied, e.g.:
+Previously, `count:true` caused QBO query parse errors for some endpoints (e.g., `search_invoices`, `search_items`). This has been fixed.
+
+### Root cause
+
+The issue was in how `buildQuickbooksSearchCriteria` passed the count option to `node-quickbooks`. The library looks for a top-level `count: true` property on objects in the criteria array, but we were adding `{field: 'count', value: true}` instead. This caused `node-quickbooks` to:
+
+1. Not recognize the count mode (no `select count(*) from` transformation)
+2. Include `count = true` in the SQL WHERE clause via `criteriaToString`, which is invalid SQL
+
+### Fix
+
+1. **Criteria builder** (`src/helpers/build-quickbooks-search-criteria.ts`):
+
+   - Now adds `{count: true}` at index 0 of the criteria array instead of `{field: 'count', value: true}`
+   - Placing at index 0 works around a splice bug in `node-quickbooks` (line 2517: `criteria.splice(i, i + 1)` removes `i + 1` elements instead of 1)
+
+2. **New helper functions**:
+
+   - `isCountQuery(criteria)`: Checks if a criteria array/object has count mode enabled
+   - `extractQueryResult(queryResponse, entityKey, isCount)`: Extracts entity array or `totalCount` from `QueryResponse`
+
+3. **All search handlers** updated to:
+   - Detect count mode using `isCountQuery`
+   - Return `totalCount` as a number when in count mode
+   - Return entity array otherwise
+
+### Usage
+
+Count mode now works consistently across all search endpoints:
 
 ```bash
 mcporter call QuickBooks.search_invoices count:true --output json
+# Returns: {"count": 42}
+
 mcporter call QuickBooks.search_items count:true --output json
+# Returns: {"count": 15}
+
+mcporter call QuickBooks.search_customers count:true --output json
+# Returns: {"count": 100}
 ```
-
-Observed error (example):
-
-```
-Error parsing query
-QueryParserError: Encountered " \"count\" \"count \"\" at line 1, column 29.
-Was expecting one of:
-  "(" ...
-  <NOT> ...
-  <IDENTIFIER> ...
-  <ID> ...
-  <STRING> ...
-(code: 4000)
-```
-
-Notes:
-
-- This appears to be a limitation/bug in how `node-quickbooks` builds queries when a `count` option is passed.
-- Internally, some handlers run criteria through `buildQuickbooksSearchCriteria(...)`, which may transform `count:true` into a criteria entry that ends up in the final QBO query string.
-
-### Workarounds
-
-- Do not use `count:true` for affected tools.
-- If a total count is needed, implement one of:
-  - Use `QueryResponse.totalCount` when the QBO endpoint provides it.
-  - Fetch results with a large `limit` (or `fetchAll:true`) and compute `count = results.length` (can be slow).
-
-### Next step (if we want to fix it properly)
-
-- Determine which QBO entities/endpoints support server-side counts.
-- Adjust criteria building so `count` is not injected as a query token for endpoints that don’t support it.
-- Alternatively: remove `count` from tool schemas for the endpoints where it is known to break.

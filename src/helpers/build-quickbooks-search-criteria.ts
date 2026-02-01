@@ -103,13 +103,58 @@ export function buildQuickbooksSearchCriteria(
   if (typeof options.offset === 'number') {
     criteriaArr.push({ field: 'offset', value: options.offset });
   }
-  if (options.count) {
-    criteriaArr.push({ field: 'count', value: true });
-  }
   if (options.fetchAll) {
     criteriaArr.push({ field: 'fetchAll', value: true });
   }
 
+  // Handle count mode: node-quickbooks looks for a top-level `count: true` property,
+  // NOT `{field: 'count', value: true}`. We must insert it at index 0 to work around
+  // a splice bug in node-quickbooks that removes extra elements at higher indices.
+  if (options.count) {
+    criteriaArr.unshift({ count: true });
+  }
+
   // If nothing ended up in the array, return empty object so Quickbooks returns all items.
   return criteriaArr.length > 0 ? criteriaArr : {};
+}
+
+/**
+ * Check if a criteria array/object has count mode enabled.
+ * node-quickbooks looks for `{count: true}` objects in the criteria array.
+ */
+export function isCountQuery(criteria: Record<string, any> | Array<Record<string, any>>): boolean {
+  if (Array.isArray(criteria)) {
+    return criteria.some((c) => c.count === true);
+  }
+  return criteria?.count === true;
+}
+
+/**
+ * Extract the appropriate result from a QueryResponse.
+ *
+ * When a count query is performed, node-quickbooks returns `{QueryResponse: {totalCount: N}}`.
+ * When a normal query is performed, it returns `{QueryResponse: {EntityName: [...]}}`.
+ *
+ * @param queryResponse - The raw response from node-quickbooks findXxx methods
+ * @param entityKey - The key for the entity in QueryResponse (e.g., 'Invoice', 'Item', 'Customer')
+ * @param isCount - Whether this was a count query
+ * @returns The entity array, or totalCount as a number for count queries
+ */
+export function extractQueryResult(
+  queryResponse: any,
+  entityKey: string,
+  isCount: boolean
+): any[] | number {
+  const qr = queryResponse?.QueryResponse;
+  if (!qr) {
+    return isCount ? 0 : [];
+  }
+
+  if (isCount) {
+    // For count queries, return the totalCount as a number
+    return typeof qr.totalCount === 'number' ? qr.totalCount : 0;
+  }
+
+  // For normal queries, return the entity array
+  return qr[entityKey] || [];
 }

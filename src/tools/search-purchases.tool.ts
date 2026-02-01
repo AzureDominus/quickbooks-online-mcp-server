@@ -86,7 +86,8 @@ const toolHandler = async (args: Record<string, unknown>) => {
     }
 
     // Transform results to user-friendly format
-    const purchases = response.result?.QueryResponse?.Purchase || response.result || [];
+    // Handler now returns the extracted array directly
+    const purchases = response.result || [];
     const purchaseArray = Array.isArray(purchases) ? purchases : [purchases];
 
     const transformedResults = purchaseArray.map(transformPurchaseFromQBO);

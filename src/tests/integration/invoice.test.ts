@@ -61,13 +61,19 @@ describe('Invoice Lifecycle Integration Test', () => {
       limit: 10,
     });
 
-    if (itemsResult.isError || !itemsResult.result || itemsResult.result.length === 0) {
+    if (
+      itemsResult.isError ||
+      !itemsResult.result ||
+      !Array.isArray(itemsResult.result) ||
+      itemsResult.result.length === 0
+    ) {
       testInfo('No items found - skipping invoice lifecycle test');
       return;
     }
 
     // Find an item that can be used on invoices
-    const item = itemsResult.result.find(
+    const items = itemsResult.result as any[];
+    const item = items.find(
       (i: any) => i.Type === 'Service' || i.Type === 'NonInventory' || i.Type === 'Inventory'
     );
     if (!item) {
