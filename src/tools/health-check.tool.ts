@@ -74,13 +74,33 @@ const toolHandler = async (_args: Record<string, unknown>) => {
       result.status = 'degraded';
     }
 
-    // Check 2: OAuth Status - try to authenticate
+    // Check 2: OAuth Status - check if tokens exist (don't trigger OAuth flow!)
     try {
-      await quickbooksClient.authenticate();
-      result.checks.oauth = {
-        status: 'ok',
-        authenticated: true,
-      };
+      const hasTokens = quickbooksClient.hasRefreshToken();
+      if (hasTokens) {
+        // Only try to get authenticated instance if we already have tokens
+        try {
+          quickbooksClient.getQuickbooks();
+          result.checks.oauth = {
+            status: 'ok',
+            authenticated: true,
+          };
+        } catch {
+          // Tokens exist but not authenticated yet - try to authenticate
+          await quickbooksClient.authenticate();
+          result.checks.oauth = {
+            status: 'ok',
+            authenticated: true,
+          };
+        }
+      } else {
+        result.checks.oauth = {
+          status: 'error',
+          authenticated: false,
+          message: 'No OAuth tokens found. Run authentication flow first.',
+        };
+        result.status = 'unhealthy';
+      }
     } catch (oauthError) {
       result.checks.oauth = {
         status: 'error',
