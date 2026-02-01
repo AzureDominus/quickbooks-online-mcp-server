@@ -1,6 +1,7 @@
 import { getQuickbooksPurchase } from '../handlers/get-quickbooks-purchase.handler.js';
 import { ToolDefinition } from '../types/tool-definition.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { QboIdSchema } from '../types/schemas/common.schema.js';
 import { z } from 'zod';
 
 // Define the tool metadata
@@ -9,7 +10,7 @@ const toolDescription = 'Get a purchase by Id from QuickBooks Online.';
 
 // Define the expected input schema for getting a purchase
 const toolSchema = z.object({
-  id: z.string(),
+  id: QboIdSchema,
 });
 
 // Define the tool handler

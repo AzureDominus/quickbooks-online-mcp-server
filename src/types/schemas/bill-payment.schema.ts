@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { ReferenceSchema, SearchFilterSchema } from './common.schema.js';
+import { ReferenceSchema, SearchFilterSchema, QboIdSchema } from './common.schema.js';
 
 // =============================================================================
 // Line Item Schema
@@ -19,7 +19,7 @@ export const BillPaymentLineSchema = z.object({
     .array(
       z.object({
         /** Transaction ID (Bill ID) */
-        TxnId: z.string().describe('Bill ID to pay'),
+        TxnId: QboIdSchema.describe('Bill ID to pay'),
         /** Transaction type */
         TxnType: z.literal('Bill').default('Bill'),
       })
@@ -77,7 +77,7 @@ export type CreateBillPaymentInput = z.infer<typeof CreateBillPaymentInputSchema
 
 export const UpdateBillPaymentInputSchema = CreateBillPaymentInputSchema.extend({
   /** Bill payment ID (required for update) */
-  Id: z.string().describe('Bill payment ID (required)'),
+  Id: QboIdSchema.describe('Bill payment ID (required)'),
   /** Sync token (required for update) */
   SyncToken: z.string().describe('Sync token (required)'),
 })
@@ -107,7 +107,7 @@ export const SearchBillPaymentsInputSchema = z.object({
 
   // Entity filters
   /** Vendor ID */
-  vendorId: z.string().optional().describe('Filter by vendor ID'),
+  vendorId: QboIdSchema.optional().describe('Filter by vendor ID'),
 
   // Amount filters
   /** Minimum amount */

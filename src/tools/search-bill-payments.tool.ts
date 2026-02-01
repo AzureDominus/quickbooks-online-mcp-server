@@ -1,6 +1,7 @@
 import { searchQuickbooksBillPayments } from '../handlers/search-quickbooks-bill-payments.handler.js';
 import { ToolDefinition } from '../types/tool-definition.js';
 import { z } from 'zod';
+import { QboIdSchema } from '../types/schemas/common.schema.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
@@ -101,7 +102,7 @@ const toolSchema = z.object({
   txnDateTo: z.string().optional().describe('Filter payments on or before this date (YYYY-MM-DD)'),
   totalAmtMin: z.number().optional().describe('Minimum total amount'),
   totalAmtMax: z.number().optional().describe('Maximum total amount'),
-  vendorId: z.string().optional().describe('Filter by vendor ID'),
+  vendorId: QboIdSchema.optional().describe('Filter by vendor ID'),
   payType: z.enum(['Check', 'CreditCard']).optional().describe('Filter by payment type'),
   docNumber: z.string().optional().describe('Filter by document/reference number'),
   // Advanced criteria for complex queries

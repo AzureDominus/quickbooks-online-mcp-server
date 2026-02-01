@@ -1,13 +1,14 @@
 import { deleteQuickbooksVendor } from '../handlers/delete-quickbooks-vendor.handler.js';
 import { ToolDefinition } from '../types/tool-definition.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { QboIdSchema } from '../types/schemas/common.schema.js';
 import { z } from 'zod';
 
 const toolName = 'delete_vendor';
 const toolDescription = 'Delete a vendor in QuickBooks Online.';
 const toolSchema = z.object({
   vendor: z.object({
-    Id: z.string(),
+    Id: QboIdSchema,
     SyncToken: z.string(),
   }),
 });

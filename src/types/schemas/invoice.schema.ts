@@ -10,6 +10,8 @@ import {
   EmailAddressSchema,
   PhysicalAddressSchema,
   SearchFilterSchema,
+  QboIdSchema,
+  QboIdRequiredSchema,
 } from './common.schema.js';
 
 // =============================================================================
@@ -84,7 +86,7 @@ export type CreateInvoiceInput = z.infer<typeof CreateInvoiceInputSchema>;
  */
 export const UpdateInvoiceInputSchema = CreateInvoiceInputSchema.extend({
   /** Invoice ID (required for update) */
-  Id: z.string().min(1).describe('Invoice ID (required)'),
+  Id: QboIdRequiredSchema.describe('Invoice ID (required)'),
   /** Sync token (required for update) */
   SyncToken: z.string().describe('Sync token (required)'),
 })
@@ -143,7 +145,7 @@ export const SearchInvoicesInputSchema = z.object({
 
   // Entity filters
   /** Customer ID */
-  customerId: z.string().optional().describe('Filter by customer ID'),
+  customerId: QboIdSchema.optional().describe('Filter by customer ID'),
 
   // Text search
   /** Search in DocNumber */

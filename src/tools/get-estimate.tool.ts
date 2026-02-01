@@ -2,10 +2,11 @@ import { getQuickbooksEstimate } from '../handlers/get-quickbooks-estimate.handl
 import { ToolDefinition } from '../types/tool-definition.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 import { z } from 'zod';
+import { QboIdSchema } from '../types/schemas/common.schema.js';
 
 const toolName = 'get_estimate';
 const toolDescription = 'Get an estimate by Id from QuickBooks Online.';
-const toolSchema = z.object({ id: z.string() });
+const toolSchema = z.object({ id: QboIdSchema });
 
 const toolHandler = async (args: any) => {
   logToolRequest('get_estimate', args);

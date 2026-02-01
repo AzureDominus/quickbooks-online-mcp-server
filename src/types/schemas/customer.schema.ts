@@ -10,6 +10,7 @@ import {
   PhoneNumberSchema,
   PhysicalAddressSchema,
   SearchFilterSchema,
+  QboIdSchema,
 } from './common.schema.js';
 
 // =============================================================================
@@ -49,7 +50,7 @@ export type CreateCustomerInput = z.infer<typeof CreateCustomerInputSchema>;
 
 export const UpdateCustomerInputSchema = CreateCustomerInputSchema.extend({
   /** Customer ID (required for update) */
-  Id: z.string().describe('Customer ID (required)'),
+  Id: QboIdSchema.describe('Customer ID (required)'),
   /** Sync token (required for update) */
   SyncToken: z.string().describe('Sync token (required)'),
 })

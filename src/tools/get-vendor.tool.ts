@@ -1,12 +1,13 @@
 import { getQuickbooksVendor } from '../handlers/get-quickbooks-vendor.handler.js';
 import { ToolDefinition } from '../types/tool-definition.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { QboIdSchema } from '../types/schemas/common.schema.js';
 import { z } from 'zod';
 
 const toolName = 'get_vendor';
 const toolDescription = 'Get a vendor by ID from QuickBooks Online.';
 const toolSchema = z.object({
-  id: z.string(),
+  id: QboIdSchema,
 });
 
 /** Inferred input type from Zod schema */

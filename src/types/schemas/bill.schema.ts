@@ -11,6 +11,8 @@ import {
   AccountBasedExpenseLineDetailSchema,
   ItemBasedExpenseLineDetailSchema,
   SearchFilterSchema,
+  QboIdSchema,
+  QboIdRequiredSchema,
 } from './common.schema.js';
 
 // =============================================================================
@@ -73,7 +75,7 @@ export type CreateBillInput = z.infer<typeof CreateBillInputSchema>;
  */
 export const UpdateBillInputSchema = CreateBillInputSchema.extend({
   /** Bill ID (required for update) */
-  Id: z.string().min(1).describe('Bill ID (required)'),
+  Id: QboIdRequiredSchema.describe('Bill ID (required)'),
   /** Sync token (required for update) */
   SyncToken: z.string().describe('Sync token (required)'),
 })
@@ -128,7 +130,7 @@ export const SearchBillsInputSchema = z.object({
 
   // Entity filters
   /** Vendor ID */
-  vendorId: z.string().optional().describe('Filter by vendor ID'),
+  vendorId: QboIdSchema.optional().describe('Filter by vendor ID'),
 
   // Payment status filter (based on Balance)
   /** Payment status: 'Paid', 'Unpaid', or 'PartiallyPaid' */

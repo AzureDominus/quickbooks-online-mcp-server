@@ -1,12 +1,13 @@
 import { getQuickbooksBill } from '../handlers/get-quickbooks-bill.handler.js';
 import { ToolDefinition } from '../types/tool-definition.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { QboIdSchema } from '../types/schemas/common.schema.js';
 import { z } from 'zod';
 
 const toolName = 'get_bill';
 const toolDescription = 'Get a bill by ID from QuickBooks Online.';
 const toolSchema = z.object({
-  id: z.string(),
+  id: QboIdSchema,
 });
 
 const toolHandler = async (args: { [x: string]: any }) => {

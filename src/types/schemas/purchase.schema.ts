@@ -14,6 +14,7 @@ import {
   ItemBasedExpenseLineDetailSchema,
   TxnTaxDetailSchema,
   SearchFilterSchema,
+  QboIdSchema,
 } from './common.schema.js';
 
 // =============================================================================
@@ -25,7 +26,7 @@ import {
  */
 export const PurchaseLineSchema = z.object({
   /** Unique identifier for this line (for updates) */
-  Id: z.string().optional().describe('Line ID (required for updates)'),
+  Id: QboIdSchema.optional().describe('Line ID (required for updates)'),
   /** Line number for ordering */
   LineNum: z.number().int().positive().optional().describe('Line number'),
   /** Line amount (positive value) */
@@ -50,17 +51,17 @@ export const SimplifiedExpenseLineSchema = z.object({
   /** Line amount (required, positive) */
   amount: z.number().positive().describe('Line amount (positive number, required)'),
   /** Expense account/category ID */
-  expenseAccountId: z.string().describe('ID of the expense account/category (required)'),
+  expenseAccountId: QboIdSchema.describe('ID of the expense account/category (required)'),
   /** Expense account name (optional, for reference) */
   expenseAccountName: z.string().optional().describe('Name of the expense account (optional)'),
   /** Line description */
   description: z.string().max(4000).optional().describe('Line description'),
   /** Tax code ID */
-  taxCodeId: z.string().optional().describe('Tax code ID for this line'),
+  taxCodeId: QboIdSchema.optional().describe('Tax code ID for this line'),
   /** Customer ID for billable expenses */
-  customerId: z.string().optional().describe('Customer ID to make this billable'),
+  customerId: QboIdSchema.optional().describe('Customer ID to make this billable'),
   /** Class ID for tracking */
-  classId: z.string().optional().describe('Class ID for departmental tracking'),
+  classId: QboIdSchema.optional().describe('Class ID for departmental tracking'),
   /** Billable status */
   billable: z.boolean().optional().describe('Whether this expense is billable to a customer'),
 });
@@ -76,7 +77,7 @@ export const SimplifiedExpenseLineSchema = z.object({
 export const PurchaseSchema = z.object({
   // Identity (for updates)
   /** Purchase ID (required for updates) */
-  Id: z.string().optional().describe('Purchase ID (required for update/delete)'),
+  Id: QboIdSchema.optional().describe('Purchase ID (required for update/delete)'),
   /** Sync token for optimistic locking (required for updates) */
   SyncToken: z.string().optional().describe('Sync token (required for updates)'),
 
@@ -155,7 +156,7 @@ export const CreatePurchaseInputSchema = z.object({
     .min(1)
     .describe('Expense line items (at least one required)'),
   /** Vendor ID */
-  vendorId: z.string().optional().describe('Vendor/payee ID'),
+  vendorId: QboIdSchema.optional().describe('Vendor/payee ID'),
   /** Vendor name (alternative to ID - will attempt to resolve) */
   vendorName: z.string().optional().describe('Vendor name (will resolve to ID if possible)'),
   /** Currency code */
@@ -192,7 +193,7 @@ export type CreatePurchaseInput = z.infer<typeof CreatePurchaseInputSchema>;
  */
 export const UpdatePurchaseInputSchema = z.object({
   /** Purchase ID to update (required) */
-  purchaseId: z.string().describe('ID of the purchase to update (required)'),
+  purchaseId: QboIdSchema.describe('ID of the purchase to update (required)'),
   /** Fields to update (all optional) */
   txnDate: z
     .string()
@@ -200,8 +201,8 @@ export const UpdatePurchaseInputSchema = z.object({
     .optional()
     .describe('New transaction date'),
   paymentType: PaymentTypeEnum.optional().describe('New payment type'),
-  paymentAccountId: z.string().optional().describe('New payment account ID'),
-  vendorId: z.string().optional().describe('New vendor ID'),
+  paymentAccountId: QboIdSchema.optional().describe('New payment account ID'),
+  vendorId: QboIdSchema.optional().describe('New vendor ID'),
   vendorName: z.string().optional().describe('New vendor name'),
   memo: z.string().max(4000).optional().describe('New memo'),
   privateNote: z.string().max(4000).optional().describe('New private note'),
@@ -252,9 +253,9 @@ export const SearchPurchasesInputSchema = z.object({
 
   // Entity filters
   /** Vendor/Entity ID */
-  vendorId: z.string().optional().describe('Filter by vendor ID'),
+  vendorId: QboIdSchema.optional().describe('Filter by vendor ID'),
   /** Payment account ID */
-  paymentAccountId: z.string().optional().describe('Filter by payment account ID'),
+  paymentAccountId: QboIdSchema.optional().describe('Filter by payment account ID'),
   /** Payment type */
   paymentType: PaymentTypeEnum.optional().describe('Filter by payment type'),
 

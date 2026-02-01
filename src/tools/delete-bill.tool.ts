@@ -1,12 +1,13 @@
 import { deleteQuickbooksBill } from '../handlers/delete-quickbooks-bill.handler.js';
 import { ToolDefinition } from '../types/tool-definition.js';
+import { QboIdSchema } from '../types/schemas/common.schema.js';
 import { z } from 'zod';
 
 const toolName = 'delete_bill';
 const toolDescription = 'Delete a bill in QuickBooks Online.';
 const toolSchema = z.object({
   bill: z.object({
-    Id: z.string(),
+    Id: QboIdSchema,
     SyncToken: z.string(),
   }),
 });

@@ -11,6 +11,7 @@ import {
   PhysicalAddressSchema,
   WebAddressSchema,
   SearchFilterSchema,
+  QboIdSchema,
 } from './common.schema.js';
 
 // =============================================================================
@@ -48,7 +49,7 @@ export type CreateVendorInput = z.infer<typeof CreateVendorInputSchema>;
 
 export const UpdateVendorInputSchema = CreateVendorInputSchema.extend({
   /** Vendor ID (required for update) */
-  Id: z.string().describe('Vendor ID (required)'),
+  Id: QboIdSchema.describe('Vendor ID (required)'),
   /** Sync token (required for update) */
   SyncToken: z.string().describe('Sync token (required)'),
 })
