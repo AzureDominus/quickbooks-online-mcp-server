@@ -16,8 +16,10 @@
         "test": "node --test --experimental-strip-types --import tsx src/tests/**/*.test.ts",
         "test:unit": "node --test --experimental-strip-types --import tsx src/tests/unit/*.test.ts",
         "test:integration": "node --test --experimental-strip-types --import tsx src/tests/integration/*.test.ts",
-        "lint:fix": "eslint --fix",
-        "lint": "eslint .",
+        "lint": "eslint src/",
+        "lint:fix": "eslint src/ --fix",
+        "format": "prettier --write src/",
+        "format:check": "prettier --check src/",
         "auth": "node dist/auth-server.js"
     },
     "dependencies": {
