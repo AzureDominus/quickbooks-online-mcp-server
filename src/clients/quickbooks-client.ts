@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import dotenv from "dotenv";
 import QuickBooks from "node-quickbooks";
 import OAuthClient from "intuit-oauth";
@@ -77,6 +78,7 @@ class QuickbooksClient {
   private oauthClient: OAuthClient;
   private isAuthenticating: boolean = false;
   private redirectUri: string;
+  private oauthState: string | null = null;
 
   constructor(config: {
     clientId: string;
@@ -112,6 +114,38 @@ class QuickbooksClient {
       // Create temporary server for OAuth callback
       const server = http.createServer(async (req, res) => {
         if (req.url?.startsWith('/callback')) {
+          // Validate state parameter to prevent CSRF attacks
+          const url = new URL(req.url, `http://localhost:${port}`);
+          const returnedState = url.searchParams.get('state');
+          if (returnedState !== this.oauthState) {
+            logger.error('OAuth state mismatch - possible CSRF attack', { returnedState });
+            res.writeHead(403, { 'Content-Type': 'text/html' });
+            res.end(`
+              <html>
+                <body style="
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                  align-items: center;
+                  height: 100vh;
+                  margin: 0;
+                  font-family: Arial, sans-serif;
+                  background-color: #fff0f0;
+                ">
+                  <h2 style="color: #d32f2f;">Invalid state parameter</h2>
+                  <p>OAuth flow rejected due to potential CSRF attack.</p>
+                </body>
+              </html>
+            `);
+            server.close();
+            this.isAuthenticating = false;
+            this.oauthState = null;
+            reject(new Error('OAuth state mismatch - possible CSRF attack'));
+            return;
+          }
+          // Clear state after validation
+          this.oauthState = null;
+
           try {
             const response = await this.oauthClient.createToken(req.url);
             const tokens = response.token;
@@ -175,11 +209,13 @@ class QuickbooksClient {
 
       // Start server
       server.listen(port, async () => {
+        // Generate cryptographic random state for CSRF protection
+        this.oauthState = crypto.randomBytes(32).toString('hex');
         
         // Generate authorization URL with proper type assertion
         const authUri = this.oauthClient.authorizeUri({
           scope: [OAuthClient.scopes.Accounting as string],
-          state: 'testState'
+          state: this.oauthState
         }).toString();
         
         // Open browser automatically
