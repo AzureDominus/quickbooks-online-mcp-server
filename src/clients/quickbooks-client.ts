@@ -10,6 +10,7 @@ import open from 'open';
 import os from 'os';
 import { logger } from '../helpers/logger.js';
 import { withRetry, withCallbackRetry, RetryOptions } from '../helpers/retry.js';
+import { encrypt, decrypt, isEncrypted } from '../helpers/encryption.js';
 
 dotenv.config();
 
@@ -33,7 +34,24 @@ interface StoredTokens {
 function loadStoredTokens(): StoredTokens | null {
   try {
     if (fs.existsSync(TOKEN_STORAGE_PATH)) {
-      const data = JSON.parse(fs.readFileSync(TOKEN_STORAGE_PATH, 'utf-8'));
+      const fileContent = fs.readFileSync(TOKEN_STORAGE_PATH, 'utf-8');
+      let data: StoredTokens;
+      
+      // Check if the file contains encrypted data
+      if (isEncrypted(fileContent)) {
+        // Decrypt the entire token file
+        const decrypted = decrypt(fileContent);
+        data = JSON.parse(decrypted);
+      } else {
+        // Legacy plaintext format - parse and migrate to encrypted
+        data = JSON.parse(fileContent);
+        // Re-save with encryption (migration)
+        if (data.refresh_token && data.realm_id) {
+          logger.info('Migrating plaintext tokens to encrypted format');
+          saveTokens(data);
+        }
+      }
+      
       // Only use stored tokens if environment matches
       if (data.environment === environment) {
         return data;
@@ -41,6 +59,7 @@ function loadStoredTokens(): StoredTokens | null {
     }
   } catch (e) {
     // Ignore errors, will trigger new OAuth flow
+    logger.warn('Failed to load stored tokens', { error: e instanceof Error ? e.message : String(e) });
   }
   return null;
 }
@@ -51,7 +70,9 @@ function saveTokens(tokens: StoredTokens): void {
     if (!fs.existsSync(tokenDir)) {
       fs.mkdirSync(tokenDir, { recursive: true });
     }
-    fs.writeFileSync(TOKEN_STORAGE_PATH, JSON.stringify(tokens, null, 2));
+    // Encrypt the token data before writing to disk
+    const encrypted = encrypt(JSON.stringify(tokens));
+    fs.writeFileSync(TOKEN_STORAGE_PATH, encrypted, { mode: 0o600 });
   } catch (e) {
     logger.error('Failed to save tokens', e instanceof Error ? e : new Error(String(e)));
   }
