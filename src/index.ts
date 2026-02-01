@@ -75,6 +75,9 @@ import { DownloadAttachmentTool } from "./tools/download-attachment.tool.js";
 import { GetTaxCodeTool } from "./tools/get-tax-code.tool.js";
 import { SearchTaxCodesTool } from "./tools/search-tax-codes.tool.js";
 
+// Health check tool
+import { HealthCheckTool } from "./tools/health-check.tool.js";
+
 const main = async () => {
   // Create an MCP server
   const server = QuickbooksMCPServer.GetServer();
@@ -173,6 +176,9 @@ const main = async () => {
   // Add tools for tax codes
   RegisterTool(server, GetTaxCodeTool);
   RegisterTool(server, SearchTaxCodesTool);
+
+  // Add health check tool
+  RegisterTool(server, HealthCheckTool);
 
   // Start receiving messages on stdin and sending messages on stdout
   const transport = new StdioServerTransport();

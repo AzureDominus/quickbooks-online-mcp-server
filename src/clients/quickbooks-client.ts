@@ -11,6 +11,7 @@ import os from 'os';
 import { logger } from '../helpers/logger.js';
 import { withRetry, withCallbackRetry, RetryOptions } from '../helpers/retry.js';
 import { encrypt, decrypt, isEncrypted } from '../helpers/encryption.js';
+import { qboCircuitBreaker } from '../helpers/circuit-breaker.js';
 
 dotenv.config();
 
@@ -20,6 +21,9 @@ const client_secret = process.env.QUICKBOOKS_CLIENT_SECRET;
 const environment = process.env.QUICKBOOKS_ENVIRONMENT || 'sandbox';
 const oauth_port = parseInt(process.env.QUICKBOOKS_OAUTH_PORT || '8765', 10);
 const redirect_uri = `http://localhost:${oauth_port}/callback`;
+
+// Request timeout configuration
+const QUICKBOOKS_TIMEOUT_MS = parseInt(process.env.QUICKBOOKS_TIMEOUT_MS || '30000', 10);
 
 // Token storage path - configurable via env var, defaults to ~/.config/quickbooks-mcp/tokens.json
 const TOKEN_STORAGE_PATH = process.env.QUICKBOOKS_TOKEN_PATH || 
@@ -263,7 +267,7 @@ class QuickbooksClient {
     }
   }
 
-  async refreshAccessToken() {
+  async refreshAccessToken(): Promise<{ access_token: string; expires_in: number }> {
     if (!this.refreshToken) {
       await this.startOAuthFlow();
       
@@ -286,6 +290,13 @@ class QuickbooksClient {
       
       this.accessToken = authResponse.token.access_token;
       
+      // Update refresh token if a new one was provided (OAuth may rotate tokens)
+      const tokenData = authResponse.token as any;
+      if (tokenData.refresh_token) {
+        this.refreshToken = tokenData.refresh_token;
+        this.saveTokensToEnv();
+      }
+      
       // Calculate expiry time
       const expiresIn = authResponse.token.expires_in || 3600; // Default to 1 hour
       this.accessTokenExpiry = new Date(Date.now() + expiresIn * 1000);
@@ -295,8 +306,119 @@ class QuickbooksClient {
         expires_in: expiresIn,
       };
     } catch (error: any) {
-      throw new Error(`Failed to refresh Quickbooks token: ${error.message}`);
+      // Detect expired or revoked refresh token errors
+      const isExpiredOrRevoked = this.isTokenExpiredOrRevokedError(error);
+      
+      if (isExpiredOrRevoked) {
+        logger.warn('Refresh token expired or revoked, clearing tokens and initiating re-auth', {
+          errorMessage: error.message,
+          errorCode: error.code || error.statusCode
+        });
+        
+        // Clear invalid tokens
+        this.clearTokens();
+        
+        // Attempt to start new OAuth flow
+        await this.startOAuthFlow();
+        
+        // Verify we got new tokens
+        if (!this.refreshToken) {
+          throw new Error(
+            'Re-authentication required: Your QuickBooks authorization has expired. ' +
+            'Please complete the OAuth flow to continue.'
+          );
+        }
+        
+        // Retry with new tokens
+        return this.refreshAccessToken();
+      }
+      
+      throw new Error(`Failed to refresh QuickBooks token: ${error.message}`);
     }
+  }
+
+  /**
+   * Check if an error indicates the refresh token is expired or revoked
+   */
+  private isTokenExpiredOrRevokedError(error: any): boolean {
+    // OAuth 2.0 error codes for invalid/expired tokens
+    const errorCode = error.code || error.error || '';
+    const statusCode = error.statusCode || error.status;
+    const errorMessage = (error.message || '').toLowerCase();
+    const errorDescription = (error.error_description || '').toLowerCase();
+    
+    // Check for specific OAuth error codes
+    const invalidTokenCodes = [
+      'invalid_grant',
+      'invalid_token',
+      'token_expired',
+      'token_revoked',
+      'access_denied'
+    ];
+    
+    if (invalidTokenCodes.includes(errorCode.toLowerCase())) {
+      return true;
+    }
+    
+    // Check for 401 Unauthorized (token issues)
+    if (statusCode === 401) {
+      return true;
+    }
+    
+    // Check error message patterns
+    const expiredPatterns = [
+      'expired',
+      'revoked',
+      'invalid refresh token',
+      'refresh token is invalid',
+      'token has been revoked',
+      'authorization code has expired'
+    ];
+    
+    for (const pattern of expiredPatterns) {
+      if (errorMessage.includes(pattern) || errorDescription.includes(pattern)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Clear stored tokens (used when tokens are expired/revoked)
+   */
+  private clearTokens(): void {
+    this.refreshToken = undefined;
+    this.accessToken = undefined;
+    this.accessTokenExpiry = undefined;
+    this.quickbooksInstance = undefined;
+    
+    // Remove token file
+    try {
+      if (fs.existsSync(TOKEN_STORAGE_PATH)) {
+        fs.unlinkSync(TOKEN_STORAGE_PATH);
+        logger.info('Cleared stored tokens', { tokenPath: TOKEN_STORAGE_PATH });
+      }
+    } catch (e) {
+      logger.warn('Failed to clear token file', { 
+        error: e instanceof Error ? e.message : String(e) 
+      });
+    }
+  }
+
+  /**
+   * Check if the client is currently authenticated with valid tokens
+   */
+  isAuthenticated(): boolean {
+    const now = new Date();
+    return !!(this.accessToken && this.accessTokenExpiry && this.accessTokenExpiry > now);
+  }
+
+  /**
+   * Check if refresh token is available
+   */
+  hasRefreshToken(): boolean {
+    return !!this.refreshToken;
   }
 
   async authenticate() {
@@ -317,10 +439,13 @@ class QuickbooksClient {
     }
     
     // At this point we know all tokens are available
+    // Use non-null assertion since we validated above
+    const accessToken = this.accessToken!;
+    
     this.quickbooksInstance = new QuickBooks(
       this.clientId,
       this.clientSecret,
-      this.accessToken,
+      accessToken,
       false, // no token secret for OAuth 2.0
       this.realmId!, // Safe to use ! here as we checked above
       this.environment === 'sandbox', // use the sandbox?
@@ -341,7 +466,7 @@ class QuickbooksClient {
   }
 
   /**
-   * Execute a QuickBooks API call with retry logic for transient failures
+   * Execute a QuickBooks API call with retry logic, timeout, and circuit breaker
    * Wraps callback-style SDK methods with exponential backoff retry
    * 
    * @param callbackFn - Function that accepts the SDK callback
@@ -357,7 +482,34 @@ class QuickbooksClient {
     callbackFn: (callback: (err: any, result: T) => void) => void,
     options?: RetryOptions
   ): Promise<T> {
-    return withCallbackRetry(callbackFn, options);
+    // Wrap with circuit breaker
+    return qboCircuitBreaker.execute(async () => {
+      // Create a promise that wraps the callback with timeout
+      const withTimeout = new Promise<T>((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error(`QuickBooks API request timed out after ${QUICKBOOKS_TIMEOUT_MS}ms`));
+        }, QUICKBOOKS_TIMEOUT_MS);
+
+        withCallbackRetry<T>(callbackFn, options)
+          .then((result) => {
+            clearTimeout(timeoutId);
+            resolve(result);
+          })
+          .catch((error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+          });
+      });
+
+      return withTimeout;
+    });
+  }
+
+  /**
+   * Get the configured timeout in milliseconds
+   */
+  getTimeoutMs(): number {
+    return QUICKBOOKS_TIMEOUT_MS;
   }
 }
 
