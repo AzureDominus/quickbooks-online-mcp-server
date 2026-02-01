@@ -12,7 +12,9 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [20.x, 22.x]
+        # Node 22.6.0+ required for --experimental-strip-types
+        # Node 23.6.0+ has it enabled by default
+        node-version: ['22.x', '23.x']
 
     steps:
       - uses: actions/checkout@v4
