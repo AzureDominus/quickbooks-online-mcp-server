@@ -134,6 +134,15 @@ npm test
 
 Examples that should produce clean JSON:
 
+> Note: `mcporter --output json` has an upstream edge case: on **input validation errors** it may emit **non-JSON** output and still exit **0**.
+> For scripts/CI, enable `pipefail` + use `jq -e`, or wrap commands with `bin/strict-json` so failures reliably produce a non-zero exit code.
+> See also: [upstream-mcporter-json-error.md](upstream-mcporter-json-error.md).
+
+```bash
+set -o pipefail
+bin/strict-json mcporter call QuickBooks.search_customers limit:3 --output json | jq -e .
+```
+
 ```bash
 # All outputs should be parseable by jq
 mcporter call QuickBooks.search_vendors limit:3 --output json | jq .

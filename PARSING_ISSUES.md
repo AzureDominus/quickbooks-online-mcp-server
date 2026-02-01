@@ -104,20 +104,28 @@ npm test
 
 ### 3. Verify JSON output is parseable by jq
 
+> Tip: for scripting/CI, use `jq -e` (and optionally `set -o pipefail`) so a non-JSON payload fails loudly.
+> There is also a helper wrapper in this repo: `bin/strict-json`.
+
 ```bash
+set -o pipefail
+
 # Test search_vendors
-mcporter call QuickBooks.search_vendors limit:3 --output json | jq .
+mcporter call QuickBooks.search_vendors limit:3 --output json | jq -e .
 
 # Test search_tax_codes
-mcporter call QuickBooks.search_tax_codes --output json | jq .
+mcporter call QuickBooks.search_tax_codes --output json | jq -e .
 
 # Test search_items
-mcporter call QuickBooks.search_items limit:3 --output json | jq .
+mcporter call QuickBooks.search_items limit:3 --output json | jq -e .
 
 # Test count mode
-mcporter call QuickBooks.search_invoices count:true --output json | jq .
-mcporter call QuickBooks.search_items count:true --output json | jq .
-mcporter call QuickBooks.search_customers count:true --output json | jq .
+mcporter call QuickBooks.search_invoices count:true --output json | jq -e .
+mcporter call QuickBooks.search_items count:true --output json | jq -e .
+mcporter call QuickBooks.search_customers count:true --output json | jq -e .
+
+# Optional: enforce strict JSON + non-zero on {"isError":true}
+# bin/strict-json mcporter call QuickBooks.search_customers limit=foo --output json | jq -e .
 ```
 
 All commands should:
@@ -139,3 +147,4 @@ mcporter generate-cli --server QuickBooks --output ./generated/QuickBooks.ts --b
 ## Related Documentation
 
 - [docs/mcporter-json-output.md](docs/mcporter-json-output.md) - Full technical details on the normalization fix
+- [docs/upstream-mcporter-json-error.md](docs/upstream-mcporter-json-error.md) - Draft upstream issue + local mitigations for non-JSON `--output json` failures

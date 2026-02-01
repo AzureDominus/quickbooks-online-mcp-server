@@ -61,6 +61,8 @@ This is important because `dist/` is gitignored. After switching branches, the c
 
 For mcporter configurations, point to `bin/quickbooks-mcp` instead of `dist/index.js`.
 
+When scripting mcporter with `--output json`, consider wrapping calls with `bin/strict-json` (or using `jq -e`) to guard against upstream cases where mcporter emits non-JSON on validation errors and still exits 0.
+
 ## Directory Structure
 
 ```
