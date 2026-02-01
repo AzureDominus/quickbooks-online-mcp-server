@@ -2,6 +2,7 @@ import { searchQuickbooksEmployees } from "../handlers/search-quickbooks-employe
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { sanitizeLikePattern } from "../helpers/sanitize.js";
 
 // Define the tool metadata
 const toolName = "search_employees";
@@ -176,16 +177,22 @@ function buildEmployeeSearchFilters(input: ToolParams): any[] {
     filters.push({ field: "Active", value: input.active, operator: "=" });
   }
   if (input.givenName !== undefined) {
+    // Sanitize user input, preserving user-provided wildcards
+    const sanitizedName = sanitizeLikePattern(input.givenName, true);
     const operator = input.givenName.includes("%") ? "LIKE" : "=";
-    filters.push({ field: "GivenName", value: input.givenName, operator });
+    filters.push({ field: "GivenName", value: sanitizedName, operator });
   }
   if (input.familyName !== undefined) {
+    // Sanitize user input, preserving user-provided wildcards
+    const sanitizedName = sanitizeLikePattern(input.familyName, true);
     const operator = input.familyName.includes("%") ? "LIKE" : "=";
-    filters.push({ field: "FamilyName", value: input.familyName, operator });
+    filters.push({ field: "FamilyName", value: sanitizedName, operator });
   }
   if (input.displayName !== undefined) {
+    // Sanitize user input, preserving user-provided wildcards
+    const sanitizedName = sanitizeLikePattern(input.displayName, true);
     const operator = input.displayName.includes("%") ? "LIKE" : "=";
-    filters.push({ field: "DisplayName", value: input.displayName, operator });
+    filters.push({ field: "DisplayName", value: sanitizedName, operator });
   }
   if (input.hiredDateFrom !== undefined) {
     filters.push({ field: "HiredDate", value: input.hiredDateFrom, operator: ">=" });

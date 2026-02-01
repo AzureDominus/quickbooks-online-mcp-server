@@ -180,6 +180,8 @@ const main = async () => {
 };
 
 main().catch((error) => {
-  console.error("Error:", error);
+  // Use stderr for fatal startup errors (logger may not be initialized)
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`Fatal error: ${errorMessage}\n`);
   process.exit(1);
 });

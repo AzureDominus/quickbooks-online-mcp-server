@@ -1,3 +1,5 @@
+import { sanitizeQueryValue } from "./sanitize.js";
+
 export interface QuickbooksFilter {
   /** Field/column name to filter on */
   field: string;
@@ -77,7 +79,9 @@ export function buildQuickbooksSearchCriteria(
 
   // Convert filters
   options.filters?.forEach((f) => {
-    criteriaArr.push({ field: f.field, value: f.value, operator: f.operator });
+    // Sanitize string values to prevent query injection
+    const sanitizedValue = typeof f.value === 'string' ? sanitizeQueryValue(f.value) : f.value;
+    criteriaArr.push({ field: f.field, value: sanitizedValue, operator: f.operator });
   });
 
   // Sorting

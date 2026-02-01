@@ -2,6 +2,7 @@ import { searchQuickbooksAccounts } from "../handlers/search-quickbooks-accounts
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { sanitizeLikePattern } from "../helpers/sanitize.js";
 
 const toolName = "search_accounts";
 const toolDescription = `Search chart-of-accounts entries in QuickBooks Online with advanced filtering.
@@ -285,8 +286,10 @@ function buildAccountSearchFilters(input: ToolParams): any[] {
     filters.push({ field: "Active", value: input.active, operator: "=" });
   }
   if (input.name !== undefined) {
+    // Sanitize user input, preserving user-provided wildcards
+    const sanitizedName = sanitizeLikePattern(input.name, true);
     const operator = input.name.includes("%") ? "LIKE" : "=";
-    filters.push({ field: "Name", value: input.name, operator });
+    filters.push({ field: "Name", value: sanitizedName, operator });
   }
 
   return filters;

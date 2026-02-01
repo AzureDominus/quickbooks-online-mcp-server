@@ -15,6 +15,7 @@ import {
   Reference,
 } from '../types/qbo-schemas.js';
 import { z } from 'zod';
+import { sanitizeLikePattern } from './sanitize.js';
 
 type SimplifiedExpenseLine = z.infer<typeof SimplifiedExpenseLineSchema>;
 
@@ -182,9 +183,11 @@ export function buildPurchaseSearchCriteria(input: SearchPurchasesInput): {
   if (input.text) {
     // QBO doesn't support full-text search directly, use LIKE on specific fields
     // We'll search in memo with LIKE
+    // Sanitize user input to prevent query injection
+    const sanitizedText = sanitizeLikePattern(input.text, false);
     criteria.push({
       field: 'Memo',
-      value: `%${input.text}%`,
+      value: `%${sanitizedText}%`,
       operator: 'LIKE',
     });
   }
@@ -545,9 +548,11 @@ export function buildEstimateSearchCriteria(input: SearchEstimatesInput): {
 
   // Text search (DocNumber with LIKE)
   if (input.search) {
+    // Sanitize user input to prevent query injection
+    const sanitizedSearch = sanitizeLikePattern(input.search, false);
     criteria.push({
       field: 'DocNumber',
-      value: `%${input.search}%`,
+      value: `%${sanitizedSearch}%`,
       operator: 'LIKE',
     });
   }

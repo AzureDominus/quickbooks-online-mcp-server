@@ -1,6 +1,7 @@
 import { quickbooksClient } from "../clients/quickbooks-client.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
+import { sanitizeQueryValue } from "../helpers/sanitize.js";
 
 interface VendorSearchCriterion {
   field: string;
@@ -48,9 +49,11 @@ export async function searchQuickbooksVendors(params: VendorSearchParams | Array
 
       // Add filter criteria
       for (const c of criteria) {
+        // Sanitize string values to prevent query injection
+        const sanitizedValue = typeof c.value === 'string' ? sanitizeQueryValue(c.value) : c.value;
         criteriaArray.push({
           field: c.field,
-          value: c.value,
+          value: sanitizedValue,
           operator: c.operator,
         });
       }

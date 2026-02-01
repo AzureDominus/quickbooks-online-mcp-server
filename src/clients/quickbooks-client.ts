@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import open from 'open';
 import os from 'os';
+import { logger } from '../helpers/logger.js';
 
 dotenv.config();
 
@@ -50,7 +51,7 @@ function saveTokens(tokens: StoredTokens): void {
     }
     fs.writeFileSync(TOKEN_STORAGE_PATH, JSON.stringify(tokens, null, 2));
   } catch (e) {
-    console.error('Failed to save tokens:', e);
+    logger.error('Failed to save tokens', e instanceof Error ? e : new Error(String(e)));
   }
 }
 
@@ -147,7 +148,7 @@ class QuickbooksClient {
               resolve();
             }, 1000);
           } catch (error) {
-            console.error('Error during token creation:', error);
+            logger.error('OAuth token creation failed', error instanceof Error ? error : new Error(String(error)));
             res.writeHead(500, { 'Content-Type': 'text/html' });
             res.end(`
               <html>
@@ -187,7 +188,7 @@ class QuickbooksClient {
 
       // Handle server errors
       server.on('error', (error) => {
-        console.error('Server error:', error);
+        logger.error('OAuth callback server error', error instanceof Error ? error : new Error(String(error)));
         this.isAuthenticating = false;
         reject(error);
       });

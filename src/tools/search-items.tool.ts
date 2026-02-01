@@ -2,6 +2,7 @@ import { searchQuickbooksItems } from "../handlers/search-quickbooks-items.handl
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { sanitizeLikePattern } from "../helpers/sanitize.js";
 
 // Define the tool metadata
 const toolName = "search_items";
@@ -179,8 +180,10 @@ function buildItemSearchCriteria(input: ToolParams): Array<{ field: string; valu
 
   // Name filter with LIKE support
   if (input.name !== undefined) {
+    // Sanitize user input, preserving user-provided wildcards
+    const sanitizedName = sanitizeLikePattern(input.name, true);
     const operator = input.name.includes('%') ? 'LIKE' : '=';
-    criteria.push({ field: 'Name', value: input.name, operator });
+    criteria.push({ field: 'Name', value: sanitizedName, operator });
   }
 
   return criteria;
