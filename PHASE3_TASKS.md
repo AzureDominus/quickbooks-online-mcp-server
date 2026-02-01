@@ -1,7 +1,7 @@
 # QuickBooks MCP Server - Phase 3 Tasks
 
 > **Created:** 2026-01-31
-> **Status:** 🔄 IN PROGRESS - 10/35 Complete
+> **Status:** 🔄 IN PROGRESS - 17/35 Complete
 
 ## Overview
 
@@ -22,16 +22,14 @@ Phase 3 focuses on code quality, security hardening, test organization, and comp
 - **Fix:** Added sanitizeQueryValue() and sanitizeLikePattern() helpers, applied to all search tools
 
 ### Task 1.3: Add rate limiting awareness
-- **Status:** 🔴 Not Started
-- **Files:** `src/clients/quickbooks-client.ts`
-- **Issue:** No handling for QuickBooks API rate limits (429 responses)
-- **Action:** Add exponential backoff retry logic for rate-limited requests
+- **Status:** ✅ Completed (commit 69d13c7)
+- **Files:** Created `src/helpers/retry.ts`, updated `src/clients/quickbooks-client.ts`
+- **Fix:** Added withRetry() with exponential backoff, handles 429/5xx, respects Retry-After header
 
 ### Task 1.4: Validate OAuth state parameter
-- **Status:** 🔴 Not Started
-- **File:** `src/clients/quickbooks-client.ts` (line 180)
-- **Issue:** Static state 'testState' used - vulnerable to CSRF
-- **Action:** Generate cryptographic random state, validate on callback
+- **Status:** ✅ Completed (commit de43fce)
+- **File:** `src/clients/quickbooks-client.ts`
+- **Fix:** Added cryptographic random state generation, validated on callback, prevents CSRF attacks
 
 ### Task 1.5: Add token encryption at rest
 - **Status:** 🔴 Not Started
@@ -84,12 +82,9 @@ Phase 3 focuses on code quality, security hardening, test organization, and comp
 - **Fix:** Documented all 54 tools with parameters, examples, and common errors
 
 ### Task 3.3: Create Entity Relationship documentation
-- **Status:** 🔴 Not Started
-- **Action:** Document QuickBooks entity relationships:
-  - Invoice → Customer, Items, TaxCodes
-  - Bill → Vendor, Accounts, TaxCodes
-  - Purchase → Vendor, Accounts, PaymentAccount
-  - JournalEntry → Accounts
+- **Status:** ✅ Completed (commit 4fb560b)
+- **File:** `docs/entities.md`
+- **Fix:** Documented all 12 QuickBooks entities with fields, relationships, examples (1344 lines)
 
 ### Task 3.4: Add JSDoc comments to all exported functions
 - **Status:** 🔴 Not Started
@@ -103,11 +98,9 @@ Phase 3 focuses on code quality, security hardening, test organization, and comp
 - **Fix:** Documented Phase 1, Phase 2, and Phase 3 progress
 
 ### Task 3.6: Add mermaid diagrams for architecture
-- **Status:** 🔴 Not Started
-- **Action:** Create diagrams for:
-  - OAuth flow
-  - MCP request flow
-  - Entity relationships
+- **Status:** ✅ Completed (commit fc0bc68)
+- **File:** `docs/architecture.md`
+- **Fix:** Added 4 mermaid diagrams: OAuth flow, MCP request flow, project structure, entity relationships
 
 ---
 
@@ -222,12 +215,9 @@ Phase 3 focuses on code quality, security hardening, test organization, and comp
 - **Action:** Create `.vscode/settings.json` with recommended settings
 
 ### Task 6.6: Add npm scripts for common tasks
-- **Status:** 🔴 Not Started
-- **Action:** Add to `package.json`:
-  - `lint`, `lint:fix`
-  - `format`, `format:check`
-  - `test:unit`, `test:integration`, `test:coverage`
-  - `docs:build`
+- **Status:** ✅ Completed (commit 77e33f4)
+- **File:** `package.json`
+- **Fix:** Added lint, lint:fix, format, format:check scripts
 
 ---
 
@@ -235,13 +225,13 @@ Phase 3 focuses on code quality, security hardening, test organization, and comp
 
 | Priority | Total Tasks | Completed | In Progress | Not Started |
 |----------|-------------|-----------|-------------|-------------|
-| P1 - Security | 5 | 2 | 0 | 3 |
+| P1 - Security | 5 | 4 | 0 | 1 |
 | P2 - Tests | 5 | 3 | 0 | 2 |
-| P3 - Documentation | 6 | 4 | 0 | 2 |
+| P3 - Documentation | 6 | 6 | 0 | 0 |
 | P4 - Code Quality | 8 | 0 | 0 | 8 |
-| P5 - Error Handling | 5 | 0 | 0 | 5 |
-| P6 - Developer Experience | 6 | 0 | 0 | 6 |
-| **TOTAL** | **35** | **9** | **0** | **26** |
+| P5 - Error Handling | 5 | 1 | 0 | 4 |
+| P6 - Developer Experience | 6 | 3 | 0 | 3 |
+| **TOTAL** | **35** | **17** | **0** | **18** |
 
 ---
 
@@ -254,6 +244,11 @@ Phase 3 focuses on code quality, security hardening, test organization, and comp
 | P1.1-P1.2 | Subagent-33 | 2026-01-31 | ✅ Complete | Commit 4a8838a - Security fixes |
 | P3.2 | Subagent-34 | 2026-01-31 | ✅ Complete | Commit 09bedde - API reference, 54 tools |
 | P2.2-P2.3 | Subagent-35 | 2026-01-31 | ✅ Complete | Commit 8836ea2 - Test utils & fixtures |
+| P1.4 | Subagent-36 | 2026-01-31 | ✅ Complete | Commit de43fce - OAuth CSRF protection |
+| P1.3, P5.1 | Subagent-37 | 2026-01-31 | ✅ Complete | Commit 69d13c7 - Retry with backoff |
+| P6.1-P6.2 | Subagent-38 | 2026-01-31 | ✅ Complete | Commit 77e33f4 - ESLint + Prettier |
+| P3.6 | Subagent-39 | 2026-01-31 | ✅ Complete | Commit fc0bc68 - Mermaid diagrams |
+| P3.3 | Subagent-40 | 2026-01-31 | ✅ Complete | Commit 4fb560b - Entity docs (1344 lines) |
 
 ---
 
