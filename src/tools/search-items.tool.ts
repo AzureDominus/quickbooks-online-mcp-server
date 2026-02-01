@@ -2,7 +2,14 @@ import { searchQuickbooksItems } from "../handlers/search-quickbooks-items.handl
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
-import { sanitizeLikePattern } from "../helpers/sanitize.js";
+import {
+  buildAmountRangeFilter,
+  buildLikeFilter,
+  buildEqualityFilter,
+  mergeFilters,
+  SearchFilter,
+} from "../helpers/search-filters.js";
+import { createMCPErrorResponse } from "../helpers/tool-error.js";
 
 // Define the tool metadata
 const toolName = "search_items";
@@ -157,36 +164,17 @@ const toolSchema = z.object({
 /**
  * Build search criteria from convenience filter parameters
  */
-function buildItemSearchCriteria(input: ToolParams): Array<{ field: string; value: string | boolean; operator?: string }> {
-  const criteria: Array<{ field: string; value: string | boolean; operator?: string }> = [];
-
-  // Item type filter
-  if (input.type !== undefined) {
-    criteria.push({ field: 'Type', value: input.type, operator: '=' });
-  }
-
-  // Active status filter
-  if (input.active !== undefined) {
-    criteria.push({ field: 'Active', value: input.active, operator: '=' });
-  }
-
-  // Unit price range filters
-  if (input.unitPriceMin !== undefined) {
-    criteria.push({ field: 'UnitPrice', value: input.unitPriceMin.toString(), operator: '>=' });
-  }
-  if (input.unitPriceMax !== undefined) {
-    criteria.push({ field: 'UnitPrice', value: input.unitPriceMax.toString(), operator: '<=' });
-  }
-
-  // Name filter with LIKE support
-  if (input.name !== undefined) {
-    // Sanitize user input, preserving user-provided wildcards
-    const sanitizedName = sanitizeLikePattern(input.name, true);
-    const operator = input.name.includes('%') ? 'LIKE' : '=';
-    criteria.push({ field: 'Name', value: sanitizedName, operator });
-  }
-
-  return criteria;
+function buildItemSearchCriteria(input: ToolParams): SearchFilter[] {
+  return mergeFilters(
+    // Item type filter
+    buildEqualityFilter('Type', input.type),
+    // Active status filter
+    buildEqualityFilter('Active', input.active),
+    // Unit price range filters
+    buildAmountRangeFilter('UnitPrice', input.unitPriceMin, input.unitPriceMax),
+    // Name filter with LIKE support
+    buildLikeFilter('Name', input.name)
+  );
 }
 
 type ToolParams = z.infer<typeof toolSchema>;
@@ -265,11 +253,7 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
   } catch (error) {
     logger.error('Unexpected error in search_items', error);
     logToolResponse(toolName, false, Date.now() - startTime);
-    return {
-      content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
-      ],
-    };
+    return createMCPErrorResponse(error, 'searching items');
   }
 };
 

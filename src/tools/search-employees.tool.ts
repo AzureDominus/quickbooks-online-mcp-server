@@ -2,7 +2,15 @@ import { searchQuickbooksEmployees } from "../handlers/search-quickbooks-employe
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
-import { sanitizeLikePattern } from "../helpers/sanitize.js";
+import {
+  buildDateRangeFilter,
+  buildLikeFilter,
+  buildEqualityFilter,
+  buildStringFilter,
+  mergeFilters,
+  SearchFilter,
+} from "../helpers/search-filters.js";
+import { createMCPErrorResponse } from "../helpers/tool-error.js";
 
 // Define the tool metadata
 const toolName = "search_employees";
@@ -170,47 +178,20 @@ type ToolParams = z.infer<typeof toolSchema>;
 /**
  * Build search filters from convenience parameters
  */
-function buildEmployeeSearchFilters(input: ToolParams): any[] {
-  const filters: any[] = [];
-
-  if (input.active !== undefined) {
-    filters.push({ field: "Active", value: input.active, operator: "=" });
-  }
-  if (input.givenName !== undefined) {
-    // Sanitize user input, preserving user-provided wildcards
-    const sanitizedName = sanitizeLikePattern(input.givenName, true);
-    const operator = input.givenName.includes("%") ? "LIKE" : "=";
-    filters.push({ field: "GivenName", value: sanitizedName, operator });
-  }
-  if (input.familyName !== undefined) {
-    // Sanitize user input, preserving user-provided wildcards
-    const sanitizedName = sanitizeLikePattern(input.familyName, true);
-    const operator = input.familyName.includes("%") ? "LIKE" : "=";
-    filters.push({ field: "FamilyName", value: sanitizedName, operator });
-  }
-  if (input.displayName !== undefined) {
-    // Sanitize user input, preserving user-provided wildcards
-    const sanitizedName = sanitizeLikePattern(input.displayName, true);
-    const operator = input.displayName.includes("%") ? "LIKE" : "=";
-    filters.push({ field: "DisplayName", value: sanitizedName, operator });
-  }
-  if (input.hiredDateFrom !== undefined) {
-    filters.push({ field: "HiredDate", value: input.hiredDateFrom, operator: ">=" });
-  }
-  if (input.hiredDateTo !== undefined) {
-    filters.push({ field: "HiredDate", value: input.hiredDateTo, operator: "<=" });
-  }
-  if (input.releasedDateFrom !== undefined) {
-    filters.push({ field: "ReleasedDate", value: input.releasedDateFrom, operator: ">=" });
-  }
-  if (input.releasedDateTo !== undefined) {
-    filters.push({ field: "ReleasedDate", value: input.releasedDateTo, operator: "<=" });
-  }
-  if (input.email !== undefined) {
-    filters.push({ field: "PrimaryEmailAddr", value: input.email, operator: "=" });
-  }
-
-  return filters;
+function buildEmployeeSearchFilters(input: ToolParams): SearchFilter[] {
+  return mergeFilters(
+    // Active status filter
+    buildEqualityFilter("Active", input.active),
+    // Name filters with LIKE support
+    buildLikeFilter("GivenName", input.givenName),
+    buildLikeFilter("FamilyName", input.familyName),
+    buildLikeFilter("DisplayName", input.displayName),
+    // Date range filters
+    buildDateRangeFilter("HiredDate", input.hiredDateFrom, input.hiredDateTo),
+    buildDateRangeFilter("ReleasedDate", input.releasedDateFrom, input.releasedDateTo),
+    // Email filter
+    buildStringFilter("PrimaryEmailAddr", input.email)
+  );
 }
 
 // Define the tool handler
@@ -330,11 +311,7 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
   } catch (error) {
     logger.error('Unexpected error in search_employees', error);
     logToolResponse(toolName, false, Date.now() - startTime);
-    return {
-      content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
-      ],
-    };
+    return createMCPErrorResponse(error, 'searching employees');
   }
 };
 
