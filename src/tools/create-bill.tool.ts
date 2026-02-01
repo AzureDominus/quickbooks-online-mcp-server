@@ -1,10 +1,10 @@
-import { createQuickbooksBill } from "../handlers/create-quickbooks-bill.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { createQuickbooksBill } from '../handlers/create-quickbooks-bill.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
-const toolName = "create-bill";
+const toolName = 'create_bill';
 const toolDescription = `Create a bill in QuickBooks Online.
 
 IDEMPOTENCY:
@@ -13,15 +13,17 @@ IDEMPOTENCY:
 
 const toolSchema = z.object({
   bill: z.object({
-    Line: z.array(z.object({
-      Amount: z.number(),
-      DetailType: z.string(),
-      Description: z.string(),
-      AccountRef: z.object({
-        value: z.string(),
-        name: z.string().optional(),
-      }),
-    })),
+    Line: z.array(
+      z.object({
+        Amount: z.number(),
+        DetailType: z.string(),
+        Description: z.string(),
+        AccountRef: z.object({
+          value: z.string(),
+          name: z.string().optional(),
+        }),
+      })
+    ),
     VendorRef: z.object({
       value: z.string(),
       name: z.string().optional(),
@@ -30,7 +32,10 @@ const toolSchema = z.object({
     Balance: z.number(),
     TotalAmt: z.number(),
   }),
-  idempotencyKey: z.string().optional().describe("Optional unique key to prevent duplicate bill creation on retry"),
+  idempotencyKey: z
+    .string()
+    .optional()
+    .describe('Optional unique key to prevent duplicate bill creation on retry'),
 });
 
 /** Inferred input type from Zod schema */
@@ -40,8 +45,12 @@ const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
   const typedArgs = args as ToolInput;
   const { bill, idempotencyKey } = typedArgs;
-  
-  logToolRequest(toolName, { vendorRef: bill.VendorRef?.value, totalAmt: bill.TotalAmt, hasIdempotencyKey: !!idempotencyKey });
+
+  logToolRequest(toolName, {
+    vendorRef: bill.VendorRef?.value,
+    totalAmt: bill.TotalAmt,
+    hasIdempotencyKey: !!idempotencyKey,
+  });
 
   try {
     // Check idempotency first
@@ -51,12 +60,12 @@ const toolHandler = async (args: Record<string, unknown>) => {
         idempotencyKey,
         existingId,
       });
-      
+
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Bill already exists (idempotent):` },
-          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+          { type: 'text' as const, text: `Bill already exists (idempotent):` },
+          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
     }
@@ -73,7 +82,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: `Error creating bill: ${response.error}`,
           },
         ],
@@ -95,8 +104,8 @@ const toolHandler = async (args: Record<string, unknown>) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Bill created successfully:` },
-        { type: "text" as const, text: JSON.stringify(createdBill) },
+        { type: 'text' as const, text: `Bill created successfully:` },
+        { type: 'text' as const, text: JSON.stringify(createdBill) },
       ],
     };
   } catch (error) {
@@ -104,7 +113,10 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -115,4 +127,4 @@ export const CreateBillTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

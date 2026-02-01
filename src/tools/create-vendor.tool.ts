@@ -1,10 +1,10 @@
-import { createQuickbooksVendor } from "../handlers/create-quickbooks-vendor.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
-import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
+import { createQuickbooksVendor } from '../handlers/create-quickbooks-vendor.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
 
-const toolName = "create-vendor";
+const toolName = 'create_vendor';
 const toolDescription = `Create a vendor in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -28,21 +28,30 @@ const toolSchema = z.object({
     GivenName: z.string().optional(),
     FamilyName: z.string().optional(),
     CompanyName: z.string().optional(),
-    PrimaryEmailAddr: z.object({
-      Address: z.string().optional(),
-    }).optional(),
-    PrimaryPhone: z.object({
-      FreeFormNumber: z.string().optional(),
-    }).optional(),
-    BillAddr: z.object({
-      Line1: z.string().optional(),
-      City: z.string().optional(),
-      Country: z.string().optional(),
-      CountrySubDivisionCode: z.string().optional(),
-      PostalCode: z.string().optional(),
-    }).optional(),
+    PrimaryEmailAddr: z
+      .object({
+        Address: z.string().optional(),
+      })
+      .optional(),
+    PrimaryPhone: z
+      .object({
+        FreeFormNumber: z.string().optional(),
+      })
+      .optional(),
+    BillAddr: z
+      .object({
+        Line1: z.string().optional(),
+        City: z.string().optional(),
+        Country: z.string().optional(),
+        CountrySubDivisionCode: z.string().optional(),
+        PostalCode: z.string().optional(),
+      })
+      .optional(),
   }),
-  idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate vendor creation on retry"),
+  idempotencyKey: z
+    .string()
+    .optional()
+    .describe('Optional key to prevent duplicate vendor creation on retry'),
 });
 
 /** Inferred input type from Zod schema */
@@ -53,7 +62,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
   const typedArgs = args as ToolInput;
   const input = typedArgs.vendor;
   const idempotencyKey = typedArgs.idempotencyKey;
-  
+
   logToolRequest(toolName, { DisplayName: input?.DisplayName, idempotencyKey });
 
   try {
@@ -64,12 +73,12 @@ const toolHandler = async (args: Record<string, unknown>) => {
         idempotencyKey,
         existingId,
       });
-      
+
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Vendor already exists (idempotent):` },
-          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+          { type: 'text' as const, text: `Vendor already exists (idempotent):` },
+          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
     }
@@ -82,7 +91,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: `Error creating vendor: ${response.error}`,
           },
         ],
@@ -108,8 +117,8 @@ const toolHandler = async (args: Record<string, unknown>) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Vendor created successfully:` },
-        { type: "text" as const, text: JSON.stringify(vendor, null, 2) },
+        { type: 'text' as const, text: `Vendor created successfully:` },
+        { type: 'text' as const, text: JSON.stringify(vendor, null, 2) },
       ],
     };
   } catch (error) {
@@ -117,7 +126,10 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -128,4 +140,4 @@ export const CreateVendorTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};
