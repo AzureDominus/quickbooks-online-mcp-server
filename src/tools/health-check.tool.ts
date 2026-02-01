@@ -158,10 +158,7 @@ const toolHandler = async (_args: Record<string, unknown>) => {
     });
 
     return {
-      content: [
-        { type: 'text' as const, text: `Health Check Result:` },
-        { type: 'text' as const, text: JSON.stringify(result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(result) }],
     };
   } catch (error) {
     logToolResponse('health_check', false, Date.now() - startTime);
@@ -169,12 +166,15 @@ const toolHandler = async (_args: Record<string, unknown>) => {
 
     result.status = 'unhealthy';
     return {
+      // Keep JSON-only for easy parsing; include error message in the JSON.
       content: [
         {
           type: 'text' as const,
-          text: `Health check error: ${error instanceof Error ? error.message : String(error)}`,
+          text: JSON.stringify({
+            ...result,
+            error: error instanceof Error ? error.message : String(error),
+          }),
         },
-        { type: 'text' as const, text: JSON.stringify(result, null, 2) },
       ],
     };
   }

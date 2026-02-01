@@ -81,7 +81,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
     if (input.count && typeof response.result === 'number') {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
-        content: [{ type: 'text' as const, text: `Found ${response.result} matching purchases` }],
+        content: [{ type: 'text' as const, text: JSON.stringify({ count: response.result }) }],
       };
     }
 
@@ -120,10 +120,8 @@ const toolHandler = async (args: Record<string, unknown>) => {
     };
 
     return {
-      content: [
-        { type: 'text' as const, text: `Found ${transformedResults.length} purchases:` },
-        { type: 'text' as const, text: JSON.stringify(responseData, null, 2) },
-      ],
+      // Return a single JSON payload so mcporter/CLIs can parse it reliably.
+      content: [{ type: 'text' as const, text: JSON.stringify(responseData) }],
     };
   } catch (error) {
     logger.error('Unexpected error in search_purchases', error);

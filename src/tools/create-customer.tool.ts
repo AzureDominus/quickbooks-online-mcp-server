@@ -1,12 +1,12 @@
-import { createQuickbooksCustomer } from "../handlers/create-quickbooks-customer.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { CreateCustomerInputSchema } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
-import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
+import { createQuickbooksCustomer } from '../handlers/create-quickbooks-customer.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { CreateCustomerInputSchema } from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
 
 // Define the tool metadata
-const toolName = "create_customer";
+const toolName = 'create_customer';
 const toolDescription = `Create a new customer in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -48,7 +48,10 @@ IDEMPOTENCY:
 // Define the expected input schema for creating a customer - properly typed
 const toolSchema = z.object({
   customer: CreateCustomerInputSchema,
-  idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate customer creation on retry"),
+  idempotencyKey: z
+    .string()
+    .optional()
+    .describe('Optional key to prevent duplicate customer creation on retry'),
 });
 
 /** Inferred input type from Zod schema */
@@ -60,7 +63,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
   const typedArgs = args as ToolInput;
   const input = typedArgs.customer;
   const idempotencyKey = typedArgs.idempotencyKey;
-  
+
   logToolRequest(toolName, { DisplayName: input.DisplayName, idempotencyKey });
 
   try {
@@ -71,12 +74,11 @@ const toolHandler = async (args: Record<string, unknown>) => {
         idempotencyKey,
         existingId,
       });
-      
+
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Customer already exists (idempotent):` },
-          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
     }
@@ -87,9 +89,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
       logger.error('Failed to create customer', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error creating customer: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error creating customer: ${response.error}` }],
       };
     }
 
@@ -109,17 +109,17 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: "text" as const, text: `Customer created successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_customer', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -130,4 +130,4 @@ export const CreateCustomerTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

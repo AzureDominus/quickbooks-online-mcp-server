@@ -77,7 +77,6 @@ const toolHandler = async (args: Record<string, unknown>) => {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: 'text' as const, text: `Vendor already exists (idempotent):` },
           { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
@@ -116,10 +115,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: 'text' as const, text: `Vendor created successfully:` },
-        { type: 'text' as const, text: JSON.stringify(vendor, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(vendor) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create-vendor', error);

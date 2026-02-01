@@ -34,12 +34,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse('get_bill', true, Date.now() - startTime);
     logger.info('Bill retrieved successfully', { billId: args.id });
     return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify(bill),
-        },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(bill) }],
     };
   } catch (error) {
     logToolResponse('get_bill', false, Date.now() - startTime);

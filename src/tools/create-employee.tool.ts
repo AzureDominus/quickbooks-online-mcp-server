@@ -40,7 +40,6 @@ const toolHandler = async (args: any) => {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: 'text' as const, text: `Employee already exists (idempotent):` },
           { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
@@ -68,10 +67,7 @@ const toolHandler = async (args: any) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: 'text' as const, text: `Employee created:` },
-        { type: 'text' as const, text: JSON.stringify(response.result) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_employee', error);

@@ -1,11 +1,14 @@
-import { updateQuickbooksJournalEntry } from "../handlers/update-quickbooks-journal-entry.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { UpdateJournalEntryInputSchema, type UpdateJournalEntryInput } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { updateQuickbooksJournalEntry } from '../handlers/update-quickbooks-journal-entry.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import {
+  UpdateJournalEntryInputSchema,
+  type UpdateJournalEntryInput,
+} from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "update_journal_entry";
+const toolName = 'update_journal_entry';
 const toolDescription = `Update an existing journal entry in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -71,14 +74,20 @@ const toolHandler = async (args: { [x: string]: any }) => {
   try {
     // Validation: ensure at least one update field is provided beyond Id/SyncToken
     const updateFields = [
-      input.Line, input.TxnDate, input.DocNumber,
-      input.PrivateNote, input.Adjustment,
+      input.Line,
+      input.TxnDate,
+      input.DocNumber,
+      input.PrivateNote,
+      input.Adjustment,
     ];
 
-    if (!updateFields.some(v => v !== undefined)) {
+    if (!updateFields.some((v) => v !== undefined)) {
       return {
         content: [
-          { type: "text" as const, text: `Error: At least one field to update must be provided (Line, TxnDate, DocNumber, PrivateNote, or Adjustment)` },
+          {
+            type: 'text' as const,
+            text: `Error: At least one field to update must be provided (Line, TxnDate, DocNumber, PrivateNote, or Adjustment)`,
+          },
         ],
       };
     }
@@ -105,7 +114,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Error updating journal entry: ${response.error}` },
+          { type: 'text' as const, text: `Error updating journal entry: ${response.error}` },
         ],
       };
     }
@@ -114,17 +123,17 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: "text" as const, text: `Journal entry updated successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in update_journal_entry', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -135,4 +144,4 @@ export const UpdateJournalEntryTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

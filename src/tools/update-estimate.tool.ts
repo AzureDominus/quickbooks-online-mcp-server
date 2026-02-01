@@ -1,10 +1,10 @@
-import { updateQuickbooksEstimate } from "../handlers/update-quickbooks-estimate.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { UpdateEstimateInputSchema } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { updateQuickbooksEstimate } from '../handlers/update-quickbooks-estimate.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { UpdateEstimateInputSchema } from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
-const toolName = "update_estimate";
+const toolName = 'update_estimate';
 const toolDescription = `Update an existing estimate in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -42,32 +42,36 @@ const toolSchema = z.object({ estimate: UpdateEstimateInputSchema });
 const toolHandler = async (args: { [x: string]: any }) => {
   const startTime = Date.now();
   const input = args.estimate as z.infer<typeof UpdateEstimateInputSchema>;
-  
+
   logToolRequest(toolName, { Id: input.Id });
 
   try {
     const response = await updateQuickbooksEstimate(input);
-    
+
     if (response.isError) {
       logger.error('Failed to update estimate', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
-      return { content: [{ type: "text" as const, text: `Error updating estimate: ${response.error}` }] };
+      return {
+        content: [{ type: 'text' as const, text: `Error updating estimate: ${response.error}` }],
+      };
     }
-    
+
     logger.info('Estimate updated successfully', { estimateId: input.Id });
     logToolResponse(toolName, true, Date.now() - startTime);
-    
+
     return {
-      content: [
-        { type: "text" as const, text: `Estimate updated successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in update_estimate', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
-      content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
     };
   }
 };
@@ -77,4 +81,4 @@ export const UpdateEstimateTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

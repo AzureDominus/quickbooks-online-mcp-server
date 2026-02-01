@@ -1,10 +1,10 @@
-import { deleteQuickbooksCustomer } from "../handlers/delete-quickbooks-customer.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { DeleteInputSchema } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { deleteQuickbooksCustomer } from '../handlers/delete-quickbooks-customer.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { DeleteInputSchema } from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
-const toolName = "delete_customer";
+const toolName = 'delete_customer';
 const toolDescription = `Delete (make inactive) a customer in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -23,15 +23,15 @@ Example:
   "SyncToken": "2"
 }`;
 
-const toolSchema = z.object({ 
-  idOrEntity: DeleteInputSchema.describe("Customer to delete with Id and SyncToken") 
+const toolSchema = z.object({
+  idOrEntity: DeleteInputSchema.describe('Customer to delete with Id and SyncToken'),
 });
 
 // MCP SDK passes parsed args directly
 const toolHandler = async (args: { [x: string]: any }) => {
   const startTime = Date.now();
   const input = args.idOrEntity as z.infer<typeof DeleteInputSchema>;
-  
+
   logToolRequest(toolName, { Id: input.Id });
 
   try {
@@ -40,23 +40,27 @@ const toolHandler = async (args: { [x: string]: any }) => {
     if (response.isError) {
       logger.error('Failed to delete customer', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
-      return { content: [{ type: "text" as const, text: `Error deleting customer: ${response.error}` }] };
+      return {
+        content: [{ type: 'text' as const, text: `Error deleting customer: ${response.error}` }],
+      };
     }
 
     logger.info('Customer deleted successfully', { customerId: input.Id });
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: "text" as const, text: `Customer deleted successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in delete_customer', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
-      content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
     };
   }
 };
@@ -66,4 +70,4 @@ export const DeleteCustomerTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

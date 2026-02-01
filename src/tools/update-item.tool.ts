@@ -1,10 +1,10 @@
-import { updateQuickbooksItem } from "../handlers/update-quickbooks-item.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { UpdateItemInputSchema, type UpdateItemInput } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { updateQuickbooksItem } from '../handlers/update-quickbooks-item.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { UpdateItemInputSchema, type UpdateItemInput } from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
-const toolName = "update_item";
+const toolName = 'update_item';
 const toolDescription = `Update an existing item (product/service) in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -58,15 +58,27 @@ const toolHandler = async (args: { [x: string]: any }) => {
   try {
     // Validation: ensure at least one update field is provided beyond Id/SyncToken
     const updateFields = [
-      input.Name, input.Type, input.Description, input.UnitPrice,
-      input.PurchaseCost, input.Taxable, input.Active, input.IncomeAccountRef,
-      input.ExpenseAccountRef, input.AssetAccountRef, input.Sku, input.QtyOnHand,
+      input.Name,
+      input.Type,
+      input.Description,
+      input.UnitPrice,
+      input.PurchaseCost,
+      input.Taxable,
+      input.Active,
+      input.IncomeAccountRef,
+      input.ExpenseAccountRef,
+      input.AssetAccountRef,
+      input.Sku,
+      input.QtyOnHand,
     ];
 
-    if (!updateFields.some(v => v !== undefined)) {
+    if (!updateFields.some((v) => v !== undefined)) {
       return {
         content: [
-          { type: "text" as const, text: `Error: At least one field to update must be provided (Name, Type, Description, UnitPrice, PurchaseCost, Taxable, Active, IncomeAccountRef, ExpenseAccountRef, AssetAccountRef, Sku, or QtyOnHand)` },
+          {
+            type: 'text' as const,
+            text: `Error: At least one field to update must be provided (Name, Type, Description, UnitPrice, PurchaseCost, Taxable, Active, IncomeAccountRef, ExpenseAccountRef, AssetAccountRef, Sku, or QtyOnHand)`,
+          },
         ],
       };
     }
@@ -88,9 +100,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logger.error('Failed to update item', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error updating item: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error updating item: ${response.error}` }],
       };
     }
 
@@ -98,17 +108,17 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: "text" as const, text: `Item updated successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in update_item', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -119,4 +129,4 @@ export const UpdateItemTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

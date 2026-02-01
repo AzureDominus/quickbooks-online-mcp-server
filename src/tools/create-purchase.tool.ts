@@ -86,7 +86,6 @@ const toolHandler = async (args: Record<string, unknown>) => {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: 'text' as const, text: `Purchase already exists (idempotent):` },
           { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
@@ -133,10 +132,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: 'text' as const, text: `Purchase created successfully:` },
-        { type: 'text' as const, text: JSON.stringify(transformedResult, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(transformedResult) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_purchase', error);

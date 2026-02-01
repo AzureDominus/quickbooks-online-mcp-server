@@ -1,18 +1,18 @@
-import { searchQuickbooksItems } from "../handlers/search-quickbooks-items.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { searchQuickbooksItems } from '../handlers/search-quickbooks-items.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 import {
   buildAmountRangeFilter,
   buildLikeFilter,
   buildEqualityFilter,
   mergeFilters,
   SearchFilter,
-} from "../helpers/search-filters.js";
-import { createMCPErrorResponse } from "../helpers/tool-error.js";
+} from '../helpers/search-filters.js';
+import { createMCPErrorResponse } from '../helpers/tool-error.js';
 
 // Define the tool metadata
-const toolName = "search_items";
+const toolName = 'search_items';
 const toolDescription = `Search items (products and services) in QuickBooks Online with advanced filtering.
 
 Items are products or services that a company buys, sells, or resells.
@@ -77,88 +77,83 @@ Example - Search items by name:
 
 // Allowed field lists based on QuickBooks Online Item entity documentation
 const ALLOWED_FILTER_FIELDS = [
-  "Id",
-  "Name",
-  "Active",
-  "Type",
-  "Sku",
-  "UnitPrice",
-  "MetaData.CreateTime",
-  "MetaData.LastUpdatedTime",
+  'Id',
+  'Name',
+  'Active',
+  'Type',
+  'Sku',
+  'UnitPrice',
+  'MetaData.CreateTime',
+  'MetaData.LastUpdatedTime',
 ] as const;
 
 const ALLOWED_SORT_FIELDS = [
-  "Id",
-  "Name",
-  "Type",
-  "ParentRef",
-  "PrefVendorRef",
-  "UnitPrice",
-  "QtyOnHand",
-  "MetaData.CreateTime",
-  "MetaData.LastUpdatedTime",
+  'Id',
+  'Name',
+  'Type',
+  'ParentRef',
+  'PrefVendorRef',
+  'UnitPrice',
+  'QtyOnHand',
+  'MetaData.CreateTime',
+  'MetaData.LastUpdatedTime',
 ] as const;
 
 // Criterion schema for typed search criteria
 const CriterionSchema = z.object({
-  field: z.enum(ALLOWED_FILTER_FIELDS).describe(
-    `Field to filter on. Allowed: ${ALLOWED_FILTER_FIELDS.join(", ")}`
-  ),
-  value: z.union([z.string(), z.boolean()]).describe("Value to match"),
-  operator: z.enum(["=", "<", ">", "<=", ">=", "LIKE", "IN"])
+  field: z
+    .enum(ALLOWED_FILTER_FIELDS)
+    .describe(`Field to filter on. Allowed: ${ALLOWED_FILTER_FIELDS.join(', ')}`),
+  value: z.union([z.string(), z.boolean()]).describe('Value to match'),
+  operator: z
+    .enum(['=', '<', '>', '<=', '>=', 'LIKE', 'IN'])
     .optional()
-    .default("=")
-    .describe("Comparison operator (default: =)"),
+    .default('=')
+    .describe('Comparison operator (default: =)'),
 });
 
 // Item types supported by QuickBooks Online
-const ITEM_TYPES = ["Service", "Inventory", "NonInventory", "Group", "Category"] as const;
+const ITEM_TYPES = ['Service', 'Inventory', 'NonInventory', 'Group', 'Category'] as const;
 
 // Define the expected input schema for searching items
 const toolSchema = z.object({
   // Convenience filter parameters
   /** Filter by item type */
-  type: z.enum(ITEM_TYPES)
+  type: z
+    .enum(ITEM_TYPES)
     .optional()
     .describe("Filter by item type ('Service', 'Inventory', 'NonInventory', 'Group', 'Category')"),
   /** Filter by active status */
-  active: z.boolean()
-    .optional()
-    .describe("Filter by active status (true/false)"),
+  active: z.boolean().optional().describe('Filter by active status (true/false)'),
   /** Minimum unit price */
-  unitPriceMin: z.number()
-    .optional()
-    .describe("Filter by minimum unit price"),
+  unitPriceMin: z.number().optional().describe('Filter by minimum unit price'),
   /** Maximum unit price */
-  unitPriceMax: z.number()
-    .optional()
-    .describe("Filter by maximum unit price"),
+  unitPriceMax: z.number().optional().describe('Filter by maximum unit price'),
   /** Filter by item name */
-  name: z.string()
-    .optional()
-    .describe("Filter by item name (use % for LIKE matching)"),
+  name: z.string().optional().describe('Filter by item name (use % for LIKE matching)'),
   // Advanced criteria for complex queries
-  criteria: z.array(CriterionSchema)
+  criteria: z
+    .array(CriterionSchema)
     .optional()
-    .describe("Additional filter criteria for advanced queries"),
-  asc: z.enum(ALLOWED_SORT_FIELDS)
+    .describe('Additional filter criteria for advanced queries'),
+  asc: z
+    .enum(ALLOWED_SORT_FIELDS)
     .optional()
-    .describe(`Sort ascending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
-  desc: z.enum(ALLOWED_SORT_FIELDS)
+    .describe(`Sort ascending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(', ')}`),
+  desc: z
+    .enum(ALLOWED_SORT_FIELDS)
     .optional()
-    .describe(`Sort descending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
-  limit: z.number().int().min(1).max(1000)
+    .describe(`Sort descending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(', ')}`),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(1000)
     .optional()
-    .describe("Maximum results to return (1-1000, default 100)"),
-  offset: z.number().int().min(0)
-    .optional()
-    .describe("Number of records to skip for pagination"),
-  count: z.boolean()
-    .optional()
-    .describe("If true, only return count of matching records"),
-  fetchAll: z.boolean()
-    .optional()
-    .describe("If true, fetch all matching records (may be slow)"),
+    .describe('Maximum results to return (1-1000, default 100)'),
+  offset: z.number().int().min(0).optional().describe('Number of records to skip for pagination'),
+  count: z.boolean().optional().describe('If true, only return count of matching records'),
+  fetchAll: z.boolean().optional().describe('If true, fetch all matching records (may be slow)'),
 });
 
 /**
@@ -184,19 +179,16 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
   const startTime = Date.now();
   // Handle both wrapped params and direct args
   const input = args.params ?? args;
-  
+
   logToolRequest(toolName, input);
 
   try {
     // Build criteria from convenience filter parameters
     const convenienceFilters = buildItemSearchCriteria(input);
-    
+
     // Merge convenience filters with any advanced criteria
-    const allCriteria = [
-      ...convenienceFilters,
-      ...(input.criteria || []),
-    ];
-    
+    const allCriteria = [...convenienceFilters, ...(input.criteria || [])];
+
     // Build search params
     const searchParams = {
       criteria: allCriteria.length > 0 ? allCriteria : undefined,
@@ -207,28 +199,29 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
       count: input.count,
       fetchAll: input.fetchAll,
     };
-    
+
     logger.debug('Built item search criteria', {
       convenienceFiltersCount: convenienceFilters.length,
       totalCriteriaCount: allCriteria.length,
     });
-    
+
     const response = await searchQuickbooksItems(searchParams);
 
     if (response.isError) {
       logger.error('Failed to search items', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error searching items: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error searching items: ${response.error}` }],
       };
     }
 
     const results = response.result;
-    const resultCount = Array.isArray(results) ? results.length : 
-      (typeof results === 'number' ? results : 0);
-    
+    const resultCount = Array.isArray(results)
+      ? results.length
+      : typeof results === 'number'
+        ? results
+        : 0;
+
     logger.info('Item search completed', {
       resultCount,
       limit: input.limit,
@@ -238,16 +231,14 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
 
     if (input.count && typeof results === 'number') {
       return {
-        content: [
-          { type: "text" as const, text: `Found ${results} matching items` },
-        ],
+        content: [{ type: 'text' as const, text: JSON.stringify({ count: results }) }],
       };
     }
 
+    // Return a single JSON payload.
     return {
       content: [
-        { type: "text" as const, text: `Items found: ${resultCount}` },
-        { type: "text" as const, text: JSON.stringify(results, null, 2) },
+        { type: 'text' as const, text: JSON.stringify({ count: resultCount, items: results }) },
       ],
     };
   } catch (error) {
@@ -262,4 +253,4 @@ export const SearchItemsTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

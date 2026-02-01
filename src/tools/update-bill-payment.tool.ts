@@ -1,11 +1,11 @@
-import { updateQuickbooksBillPayment } from "../handlers/update-quickbooks-bill-payment.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { UpdateBillPaymentInputSchema } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { updateQuickbooksBillPayment } from '../handlers/update-quickbooks-bill-payment.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { UpdateBillPaymentInputSchema } from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "update_bill_payment";
+const toolName = 'update_bill_payment';
 const toolDescription = `Update an existing bill payment in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -41,7 +41,7 @@ const toolSchema = z.object({
 const toolHandler = async (args: { [x: string]: any }) => {
   const startTime = Date.now();
   const input = args.billPayment as z.infer<typeof UpdateBillPaymentInputSchema>;
-  
+
   logToolRequest(toolName, { Id: input.Id });
 
   try {
@@ -52,7 +52,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Error updating bill payment: ${response.error}` },
+          { type: 'text' as const, text: `Error updating bill payment: ${response.error}` },
         ],
       };
     }
@@ -61,17 +61,17 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: "text" as const, text: `Bill payment updated successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in update_bill_payment', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -82,4 +82,4 @@ export const UpdateBillPaymentTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

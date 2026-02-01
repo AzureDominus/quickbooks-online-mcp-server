@@ -362,7 +362,7 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
     // Handle count-only response
     if (input.count && typeof accounts === 'number') {
       return {
-        content: [{ type: 'text' as const, text: `Found ${accounts} matching accounts` }],
+        content: [{ type: 'text' as const, text: JSON.stringify({ count: accounts }) }],
       };
     }
 
@@ -388,10 +388,7 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
     };
 
     return {
-      content: [
-        { type: 'text' as const, text: `Found ${accountArray.length} accounts:` },
-        { type: 'text' as const, text: JSON.stringify(responseData, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(responseData) }],
     };
   } catch (error) {
     logToolResponse('search_accounts', false, Date.now() - startTime);

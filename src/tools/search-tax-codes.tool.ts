@@ -98,11 +98,12 @@ const toolHandler = async (args: { [x: string]: any }) => {
     taxGroup: tc.TaxGroup,
   }));
 
+  // Return a single JSON payload so callers can parse it reliably.
   return {
     content: [
       {
         type: 'text' as const,
-        text: `Found ${taxCodes.length} tax code(s):\n${JSON.stringify(summary, null, 2)}`,
+        text: JSON.stringify({ count: taxCodes.length, taxCodes: summary }),
       },
     ],
   };

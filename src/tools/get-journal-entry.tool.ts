@@ -35,10 +35,7 @@ const toolHandler = async (args: any) => {
     logToolResponse('get_journal_entry', true, Date.now() - startTime);
     logger.info('Journal entry retrieved successfully', { journalEntryId: args.id });
     return {
-      content: [
-        { type: 'text' as const, text: `Journal entry retrieved:` },
-        { type: 'text' as const, text: JSON.stringify(response.result) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logToolResponse('get_journal_entry', false, Date.now() - startTime);

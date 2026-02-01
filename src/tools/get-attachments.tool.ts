@@ -29,16 +29,13 @@ const toolHandler = async (args: Record<string, unknown>) => {
 
   if (attachments.length === 0) {
     return {
-      content: [
-        { type: 'text' as const, text: `No attachments found for ${entity_type} ${entity_id}` },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify({ count: 0, attachments: [] }) }],
     };
   }
 
   return {
     content: [
-      { type: 'text' as const, text: `Found ${attachments.length} attachment(s):` },
-      { type: 'text' as const, text: JSON.stringify(attachments, null, 2) },
+      { type: 'text' as const, text: JSON.stringify({ count: attachments.length, attachments }) },
     ],
   };
 };

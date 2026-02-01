@@ -1,12 +1,15 @@
-import { createQuickbooksJournalEntry } from "../handlers/create-quickbooks-journal-entry.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { CreateJournalEntryInputSchema, type CreateJournalEntryInput } from "../types/qbo-schemas.js";
-import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { createQuickbooksJournalEntry } from '../handlers/create-quickbooks-journal-entry.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import {
+  CreateJournalEntryInputSchema,
+  type CreateJournalEntryInput,
+} from '../types/qbo-schemas.js';
+import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "create_journal_entry";
+const toolName = 'create_journal_entry';
 const toolDescription = `Create a journal entry in QuickBooks Online.
 
 IDEMPOTENCY:
@@ -63,15 +66,18 @@ Example - Record a $500 expense paid from checking:
 // Define the expected input schema for creating a journal entry
 const toolSchema = z.object({
   journalEntry: CreateJournalEntryInputSchema,
-  idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate journal entry creation on retry"),
+  idempotencyKey: z
+    .string()
+    .optional()
+    .describe('Optional key to prevent duplicate journal entry creation on retry'),
 });
 
 // Define the tool handler
 const toolHandler = async (args: { [x: string]: any }) => {
   const startTime = Date.now();
   const input = args.journalEntry as CreateJournalEntryInput;
-  
-  logToolRequest(toolName, { 
+
+  logToolRequest(toolName, {
     lineCount: input.Line?.length,
     txnDate: input.TxnDate,
   });
@@ -84,12 +90,11 @@ const toolHandler = async (args: { [x: string]: any }) => {
         idempotencyKey: args.idempotencyKey,
         existingId,
       });
-      
+
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Journal entry already exists (idempotent):` },
-          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
     }
@@ -104,11 +109,14 @@ const toolHandler = async (args: { [x: string]: any }) => {
         totalCredits += line.Amount || 0;
       }
     }
-    
+
     if (Math.abs(totalDebits - totalCredits) > 0.01) {
       return {
         content: [
-          { type: "text" as const, text: `Error: Debits ($${totalDebits.toFixed(2)}) must equal Credits ($${totalCredits.toFixed(2)})` },
+          {
+            type: 'text' as const,
+            text: `Error: Debits ($${totalDebits.toFixed(2)}) must equal Credits ($${totalCredits.toFixed(2)})`,
+          },
         ],
       };
     }
@@ -120,7 +128,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Error creating journal entry: ${response.error}` },
+          { type: 'text' as const, text: `Error creating journal entry: ${response.error}` },
         ],
       };
     }
@@ -137,17 +145,17 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: "text" as const, text: `Journal entry created successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_journal_entry', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -158,4 +166,4 @@ export const CreateJournalEntryTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

@@ -1,10 +1,10 @@
-import { updateQuickbooksCustomer } from "../handlers/update-quickbooks-customer.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { UpdateCustomerInputSchema } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { updateQuickbooksCustomer } from '../handlers/update-quickbooks-customer.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { UpdateCustomerInputSchema } from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
-const toolName = "update_customer";
+const toolName = 'update_customer';
 const toolDescription = `Update an existing customer in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -41,7 +41,7 @@ const toolSchema = z.object({ customer: UpdateCustomerInputSchema });
 const toolHandler = async (args: { [x: string]: any }) => {
   const startTime = Date.now();
   const input = args.customer as z.infer<typeof UpdateCustomerInputSchema>;
-  
+
   logToolRequest(toolName, { Id: input.Id });
 
   try {
@@ -51,9 +51,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logger.error('Failed to update customer', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error updating customer: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error updating customer: ${response.error}` }],
       };
     }
 
@@ -64,17 +62,17 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: "text" as const, text: `Customer updated successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in update_customer', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -85,4 +83,4 @@ export const UpdateCustomerTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

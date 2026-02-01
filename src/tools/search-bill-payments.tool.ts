@@ -1,10 +1,10 @@
-import { searchQuickbooksBillPayments } from "../handlers/search-quickbooks-bill-payments.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { searchQuickbooksBillPayments } from '../handlers/search-quickbooks-bill-payments.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "search_bill_payments";
+const toolName = 'search_bill_payments';
 const toolDescription = `Search bill payments in QuickBooks Online with advanced filtering.
 
 Bill payments are transactions that record payments made to vendors against bills.
@@ -62,85 +62,73 @@ Example - Find payments to a specific vendor:
 
 // Allowed fields for BillPayment entity filtering
 const ALLOWED_FILTER_FIELDS = [
-  "Id",
-  "DocNumber",
-  "TxnDate",
-  "VendorRef",
-  "TotalAmt",
-  "PayType",
-  "MetaData.CreateTime",
-  "MetaData.LastUpdatedTime",
+  'Id',
+  'DocNumber',
+  'TxnDate',
+  'VendorRef',
+  'TotalAmt',
+  'PayType',
+  'MetaData.CreateTime',
+  'MetaData.LastUpdatedTime',
 ] as const;
 
 const ALLOWED_SORT_FIELDS = [
-  "Id",
-  "DocNumber",
-  "TxnDate",
-  "TotalAmt",
-  "MetaData.CreateTime",
-  "MetaData.LastUpdatedTime",
+  'Id',
+  'DocNumber',
+  'TxnDate',
+  'TotalAmt',
+  'MetaData.CreateTime',
+  'MetaData.LastUpdatedTime',
 ] as const;
 
 // Criterion schema for typed search criteria
 const CriterionSchema = z.object({
-  field: z.enum(ALLOWED_FILTER_FIELDS).describe(
-    `Field to filter on. Allowed: ${ALLOWED_FILTER_FIELDS.join(", ")}`
-  ),
-  value: z.union([z.string(), z.boolean()]).describe("Value to match"),
-  operator: z.enum(["=", "<", ">", "<=", ">=", "LIKE", "IN"])
+  field: z
+    .enum(ALLOWED_FILTER_FIELDS)
+    .describe(`Field to filter on. Allowed: ${ALLOWED_FILTER_FIELDS.join(', ')}`),
+  value: z.union([z.string(), z.boolean()]).describe('Value to match'),
+  operator: z
+    .enum(['=', '<', '>', '<=', '>=', 'LIKE', 'IN'])
     .optional()
-    .default("=")
-    .describe("Comparison operator (default: =)"),
+    .default('=')
+    .describe('Comparison operator (default: =)'),
 });
 
 // Define the expected input schema for searching bill payments
 const toolSchema = z.object({
   // Convenience filter parameters
-  txnDateFrom: z.string()
-    .optional()
-    .describe("Filter payments on or after this date (YYYY-MM-DD)"),
-  txnDateTo: z.string()
-    .optional()
-    .describe("Filter payments on or before this date (YYYY-MM-DD)"),
-  totalAmtMin: z.number()
-    .optional()
-    .describe("Minimum total amount"),
-  totalAmtMax: z.number()
-    .optional()
-    .describe("Maximum total amount"),
-  vendorId: z.string()
-    .optional()
-    .describe("Filter by vendor ID"),
-  payType: z.enum(["Check", "CreditCard"])
-    .optional()
-    .describe("Filter by payment type"),
-  docNumber: z.string()
-    .optional()
-    .describe("Filter by document/reference number"),
+  txnDateFrom: z.string().optional().describe('Filter payments on or after this date (YYYY-MM-DD)'),
+  txnDateTo: z.string().optional().describe('Filter payments on or before this date (YYYY-MM-DD)'),
+  totalAmtMin: z.number().optional().describe('Minimum total amount'),
+  totalAmtMax: z.number().optional().describe('Maximum total amount'),
+  vendorId: z.string().optional().describe('Filter by vendor ID'),
+  payType: z.enum(['Check', 'CreditCard']).optional().describe('Filter by payment type'),
+  docNumber: z.string().optional().describe('Filter by document/reference number'),
   // Advanced criteria for complex queries
-  criteria: z.array(CriterionSchema)
+  criteria: z
+    .array(CriterionSchema)
     .optional()
-    .describe("Advanced filter criteria for complex queries"),
+    .describe('Advanced filter criteria for complex queries'),
   // Sorting
-  asc: z.enum(ALLOWED_SORT_FIELDS)
+  asc: z
+    .enum(ALLOWED_SORT_FIELDS)
     .optional()
-    .describe(`Sort ascending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
-  desc: z.enum(ALLOWED_SORT_FIELDS)
+    .describe(`Sort ascending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(', ')}`),
+  desc: z
+    .enum(ALLOWED_SORT_FIELDS)
     .optional()
-    .describe(`Sort descending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(", ")}`),
+    .describe(`Sort descending by field. Allowed: ${ALLOWED_SORT_FIELDS.join(', ')}`),
   // Pagination
-  limit: z.number().int().min(1).max(1000)
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(1000)
     .optional()
-    .describe("Maximum results to return (1-1000)"),
-  offset: z.number().int().min(0)
-    .optional()
-    .describe("Number of records to skip for pagination"),
-  count: z.boolean()
-    .optional()
-    .describe("If true, only return count of matching records"),
-  fetchAll: z.boolean()
-    .optional()
-    .describe("If true, fetch all matching records (may be slow)"),
+    .describe('Maximum results to return (1-1000)'),
+  offset: z.number().int().min(0).optional().describe('Number of records to skip for pagination'),
+  count: z.boolean().optional().describe('If true, only return count of matching records'),
+  fetchAll: z.boolean().optional().describe('If true, fetch all matching records (may be slow)'),
 });
 
 type ToolParams = z.infer<typeof toolSchema>;
@@ -152,25 +140,25 @@ function buildBillPaymentSearchFilters(input: ToolParams): any[] {
   const filters: any[] = [];
 
   if (input.txnDateFrom !== undefined) {
-    filters.push({ field: "TxnDate", value: input.txnDateFrom, operator: ">=" });
+    filters.push({ field: 'TxnDate', value: input.txnDateFrom, operator: '>=' });
   }
   if (input.txnDateTo !== undefined) {
-    filters.push({ field: "TxnDate", value: input.txnDateTo, operator: "<=" });
+    filters.push({ field: 'TxnDate', value: input.txnDateTo, operator: '<=' });
   }
   if (input.totalAmtMin !== undefined) {
-    filters.push({ field: "TotalAmt", value: String(input.totalAmtMin), operator: ">=" });
+    filters.push({ field: 'TotalAmt', value: String(input.totalAmtMin), operator: '>=' });
   }
   if (input.totalAmtMax !== undefined) {
-    filters.push({ field: "TotalAmt", value: String(input.totalAmtMax), operator: "<=" });
+    filters.push({ field: 'TotalAmt', value: String(input.totalAmtMax), operator: '<=' });
   }
   if (input.vendorId !== undefined) {
-    filters.push({ field: "VendorRef", value: input.vendorId, operator: "=" });
+    filters.push({ field: 'VendorRef', value: input.vendorId, operator: '=' });
   }
   if (input.payType !== undefined) {
-    filters.push({ field: "PayType", value: input.payType, operator: "=" });
+    filters.push({ field: 'PayType', value: input.payType, operator: '=' });
   }
   if (input.docNumber !== undefined) {
-    filters.push({ field: "DocNumber", value: input.docNumber, operator: "=" });
+    filters.push({ field: 'DocNumber', value: input.docNumber, operator: '=' });
   }
 
   return filters;
@@ -181,22 +169,22 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
   const startTime = Date.now();
   // Handle both wrapped params and direct args
   const input = args.params ?? args;
-  
+
   logToolRequest(toolName, input);
 
   try {
     // Build criteria from convenience parameters
     const convenienceFilters = buildBillPaymentSearchFilters(input);
-    
+
     // Merge with any advanced criteria if provided
     let searchParams: any;
-    
+
     if (input.criteria && input.criteria.length > 0) {
       // User provided advanced criteria - merge with convenience filters
-      const advancedFilters = input.criteria.map(c => ({
+      const advancedFilters = input.criteria.map((c) => ({
         field: c.field,
         value: c.value,
-        operator: c.operator || "=",
+        operator: c.operator || '=',
       }));
       searchParams = {
         filters: [...convenienceFilters, ...advancedFilters],
@@ -229,7 +217,7 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
         fetchAll: input.fetchAll,
       };
     }
-    
+
     const response = await searchQuickbooksBillPayments(searchParams);
 
     if (response.isError) {
@@ -237,7 +225,7 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Error searching bill payments: ${response.error}` },
+          { type: 'text' as const, text: `Error searching bill payments: ${response.error}` },
         ],
       };
     }
@@ -246,15 +234,13 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
     if (input.count && typeof response.result === 'number') {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Found ${response.result} matching bill payments` },
-        ],
+        content: [{ type: 'text' as const, text: JSON.stringify({ count: response.result }) }],
       };
     }
 
     const results = response.result?.QueryResponse?.BillPayment || response.result || [];
     const resultArray = Array.isArray(results) ? results : [results];
-    
+
     logger.info('Bill payment search completed', {
       resultCount: resultArray.length,
       limit: input.limit,
@@ -283,17 +269,17 @@ const toolHandler = async (args: { params?: ToolParams } & ToolParams) => {
     };
 
     return {
-      content: [
-        { type: "text" as const, text: `Found ${resultArray.length} bill payments:` },
-        { type: "text" as const, text: JSON.stringify(responseData, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(responseData) }],
     };
   } catch (error) {
     logger.error('Unexpected error in search_bill_payments', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -304,4 +290,4 @@ export const SearchBillPaymentsTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

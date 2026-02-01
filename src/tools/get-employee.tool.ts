@@ -31,10 +31,7 @@ const toolHandler = async (args: any) => {
     logToolResponse('get_employee', true, Date.now() - startTime);
     logger.info('Employee retrieved successfully', { employeeId: args.id });
     return {
-      content: [
-        { type: 'text' as const, text: `Employee retrieved:` },
-        { type: 'text' as const, text: JSON.stringify(response.result) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logToolResponse('get_employee', false, Date.now() - startTime);

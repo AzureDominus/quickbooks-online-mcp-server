@@ -41,7 +41,6 @@ const toolHandler = async (args: any) => {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: 'text' as const, text: `Bill payment already exists (idempotent):` },
           { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
@@ -74,10 +73,7 @@ const toolHandler = async (args: any) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: 'text' as const, text: `Bill payment created:` },
-        { type: 'text' as const, text: JSON.stringify(response.result) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_bill_payment', error);

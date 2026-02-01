@@ -102,7 +102,6 @@ const toolHandler = async (args: Record<string, unknown>) => {
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: 'text' as const, text: `Bill already exists (idempotent):` },
           { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
@@ -141,10 +140,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: 'text' as const, text: `Bill created successfully:` },
-        { type: 'text' as const, text: JSON.stringify(createdBill) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(createdBill) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create-bill', error);

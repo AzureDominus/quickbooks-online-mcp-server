@@ -31,10 +31,7 @@ const toolHandler = async (args: any) => {
     logToolResponse('get_purchase', true, Date.now() - startTime);
     logger.info('Purchase retrieved successfully', { purchaseId: args.id });
     return {
-      content: [
-        { type: 'text' as const, text: `Purchase retrieved:` },
-        { type: 'text' as const, text: JSON.stringify(response.result) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logToolResponse('get_purchase', false, Date.now() - startTime);

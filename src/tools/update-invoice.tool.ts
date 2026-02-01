@@ -1,10 +1,10 @@
-import { updateQuickbooksInvoice } from "../handlers/update-quickbooks-invoice.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { UpdateInvoiceInputSchema, type UpdateInvoiceInput } from "../types/qbo-schemas.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { updateQuickbooksInvoice } from '../handlers/update-quickbooks-invoice.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { UpdateInvoiceInputSchema, type UpdateInvoiceInput } from '../types/qbo-schemas.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
-const toolName = "update_invoice";
+const toolName = 'update_invoice';
 const toolDescription = `Update an existing invoice in QuickBooks Online (sparse update).
 
 REQUIRED FIELDS:
@@ -49,7 +49,9 @@ Example - Update due date and add note:
 
 // Define the expected input schema for updating an invoice
 const toolSchema = z.object({
-  invoice: UpdateInvoiceInputSchema.describe("Invoice update data with Id, SyncToken, and fields to update"),
+  invoice: UpdateInvoiceInputSchema.describe(
+    'Invoice update data with Id, SyncToken, and fields to update'
+  ),
 });
 
 // Define the tool handler
@@ -62,18 +64,16 @@ const toolHandler = async (args: { [x: string]: any }) => {
   try {
     // Build update payload for the handler (which expects invoice_id and patch)
     const { Id, SyncToken, ...patch } = input;
-    const response = await updateQuickbooksInvoice({ 
-      invoice_id: Id, 
-      patch: { ...patch, SyncToken } 
+    const response = await updateQuickbooksInvoice({
+      invoice_id: Id,
+      patch: { ...patch, SyncToken },
     });
 
     if (response.isError) {
       logger.error('Failed to update invoice', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error updating invoice: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error updating invoice: ${response.error}` }],
       };
     }
 
@@ -81,17 +81,17 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, true, Date.now() - startTime);
 
     return {
-      content: [
-        { type: "text" as const, text: `Invoice updated successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
-      ],
+      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
     };
   } catch (error) {
     logger.error('Unexpected error in update_invoice', error);
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -102,4 +102,4 @@ export const UpdateInvoiceTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

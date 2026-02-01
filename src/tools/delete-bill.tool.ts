@@ -28,12 +28,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
   const bill = response.result;
 
   return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(bill),
-      },
-    ],
+    content: [{ type: 'text' as const, text: JSON.stringify(bill) }],
   };
 };
 
