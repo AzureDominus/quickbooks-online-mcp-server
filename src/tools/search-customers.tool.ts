@@ -54,23 +54,31 @@ const toolSchema = z.object({
   count: z.boolean().optional(),
 });
 
-const toolHandler = async (args: any) => {
+/** Inferred input type from Zod schema */
+type ToolInput = z.infer<typeof toolSchema>;
+
+/** Criterion type for checking field presence */
+type AdvancedCriterion = z.infer<typeof advancedCriterionSchema>;
+type SimpleCriterion = z.infer<typeof criterionSchema>;
+
+const toolHandler = async (args: { params?: ToolInput }) => {
   logToolRequest("search_customers", args.params);
   const startTime = Date.now();
 
   try {
-    const { criteria = [], ...options } = (args.params ?? {}) as z.infer<typeof toolSchema>;
+    const { criteria = [], ...options } = args.params ?? {} as ToolInput;
 
     // Build criteria to send to SDK. If user provided the advanced array with field/operator/value
     // we pass it straight through. Otherwise we transform legacy {key,value} pairs to object.
-    let criteriaToSend: any;
+    let criteriaToSend: Array<AdvancedCriterion | SimpleCriterion> | Record<string, unknown>;
     if (Array.isArray(criteria) && criteria.length > 0) {
-      const first = criteria[0] as any;
+      const first = criteria[0];
+      // Check if this is an advanced criterion with 'field' property
       if (typeof first === "object" && "field" in first) {
-        criteriaToSend = [...criteria, ...Object.entries(options).map(([key, value]) => ({ field: key, value }))];
+        criteriaToSend = [...criteria, ...Object.entries(options).map(([key, value]) => ({ field: key as AdvancedCriterion["field"], value: value as string | boolean }))];
       } else {
         // original simple key/value list → map
-        criteriaToSend = (criteria as Array<{ key: string; value: any }>).reduce<Record<string, any>>((acc, { key, value }) => {
+        criteriaToSend = (criteria as SimpleCriterion[]).reduce<Record<string, unknown>>((acc, { key, value }) => {
           if (value !== undefined && value !== null) acc[key] = value;
           return acc;
         }, { ...options });

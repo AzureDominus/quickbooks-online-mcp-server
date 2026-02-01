@@ -51,11 +51,15 @@ const toolSchema = z.object({
   idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate customer creation on retry"),
 });
 
+/** Inferred input type from Zod schema */
+type ToolInput = z.infer<typeof toolSchema>;
+
 // Define the tool handler - MCP SDK passes parsed args directly
-const toolHandler = async (args: { [x: string]: any }) => {
+const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
-  const input = args.customer as z.infer<typeof CreateCustomerInputSchema>;
-  const idempotencyKey = args.idempotencyKey as string | undefined;
+  const typedArgs = args as ToolInput;
+  const input = typedArgs.customer;
+  const idempotencyKey = typedArgs.idempotencyKey;
   
   logToolRequest(toolName, { DisplayName: input.DisplayName, idempotencyKey });
 

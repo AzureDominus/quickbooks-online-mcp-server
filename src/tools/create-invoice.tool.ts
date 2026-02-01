@@ -26,8 +26,15 @@ const toolSchema = z.object({
   idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate invoice creation on retry"),
 });
 
-const toolHandler = async ({ params }: any) => {
+/** Inferred input type from Zod schema */
+type ToolInput = z.infer<typeof toolSchema>;
+
+const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
+  const params = (args as { params?: ToolInput }).params;
+  if (!params) {
+    return { content: [{ type: "text" as const, text: "Error: Missing params" }] };
+  }
   
   logToolRequest(toolName, { ...params, line_items: `[${params.line_items?.length || 0} items]` });
 

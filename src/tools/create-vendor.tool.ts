@@ -45,10 +45,14 @@ const toolSchema = z.object({
   idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate vendor creation on retry"),
 });
 
-const toolHandler = async (args: { [x: string]: any }) => {
+/** Inferred input type from Zod schema */
+type ToolInput = z.infer<typeof toolSchema>;
+
+const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
-  const input = args.vendor;
-  const idempotencyKey = args.idempotencyKey as string | undefined;
+  const typedArgs = args as ToolInput;
+  const input = typedArgs.vendor;
+  const idempotencyKey = typedArgs.idempotencyKey;
   
   logToolRequest(toolName, { DisplayName: input?.DisplayName, idempotencyKey });
 

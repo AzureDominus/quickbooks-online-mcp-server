@@ -46,7 +46,7 @@ Example - Find credit card expenses over $100 in January 2026:
 const toolSchema = SearchPurchasesInputSchema;
 
 // Define the tool handler - MCP SDK passes parsed args directly
-const toolHandler = async (args: { [x: string]: any }) => {
+const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
   // Args are passed directly as the schema result
   const input = args as SearchPurchasesInput;

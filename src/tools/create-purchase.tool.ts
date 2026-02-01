@@ -60,10 +60,13 @@ const toolSchema = z.object({
   purchase: CreatePurchaseInputSchema,
 });
 
+/** Inferred input type from Zod schema */
+type ToolInput = z.infer<typeof toolSchema>;
+
 // Define the tool handler
-const toolHandler = async (args: { [x: string]: any }) => {
+const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
-  const input = args.purchase as CreatePurchaseInput;
+  const input = (args as ToolInput).purchase;
   
   logToolRequest(toolName, { ...input, lines: `[${input.lines?.length || 0} lines]` });
 

@@ -7,14 +7,18 @@ const toolName = "get_customer";
 const toolDescription = "Get a customer by Id from QuickBooks Online.";
 const toolSchema = z.object({ id: z.string() });
 
-type ToolParams = z.infer<typeof toolSchema>;
+/** Inferred input type from Zod schema */
+type ToolInput = z.infer<typeof toolSchema>;
 
-const toolHandler = async (args: { [key: string]: ToolParams }) => {
+const toolHandler = async (args: Record<string, unknown>) => {
   logToolRequest("get_customer", args);
   const startTime = Date.now();
+  const params = (args as { params?: ToolInput }).params;
+  if (!params) {
+    return { content: [{ type: "text" as const, text: "Error: Missing params" }] };
+  }
 
   try {
-    const params = args.params as ToolParams;
     const response = await getQuickbooksCustomer(params.id);
 
     if (response.isError) {
@@ -37,7 +41,7 @@ const toolHandler = async (args: { [key: string]: ToolParams }) => {
     };
   } catch (error) {
     logToolResponse("get_customer", false, Date.now() - startTime);
-    logger.error("Failed to get customer", error, { customerId: (args.params as ToolParams)?.id });
+    logger.error("Failed to get customer", error, { customerId: params?.id });
     throw error;
   }
 };

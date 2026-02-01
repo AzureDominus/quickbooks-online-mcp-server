@@ -9,16 +9,20 @@ const toolSchema = z.object({
   id: z.string(),
 });
 
-const toolHandler = async (args: { [x: string]: any }) => {
+/** Inferred input type from Zod schema */
+type ToolInput = z.infer<typeof toolSchema>;
+
+const toolHandler = async (args: Record<string, unknown>) => {
   logToolRequest("get_vendor", args);
   const startTime = Date.now();
+  const typedArgs = args as ToolInput;
 
   try {
-    const response = await getQuickbooksVendor(args.id);
+    const response = await getQuickbooksVendor(typedArgs.id);
 
     if (response.isError) {
       logToolResponse("get_vendor", false, Date.now() - startTime);
-      logger.error(`Failed to get vendor: ${response.error}`, undefined, { vendorId: args.id });
+      logger.error(`Failed to get vendor: ${response.error}`, undefined, { vendorId: typedArgs.id });
       return {
         content: [
           {

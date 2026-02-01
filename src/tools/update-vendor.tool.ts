@@ -29,16 +29,20 @@ const toolSchema = z.object({
   }),
 });
 
-const toolHandler = async (args: { [x: string]: any }) => {
+/** Inferred input type from Zod schema */
+type ToolInput = z.infer<typeof toolSchema>;
+
+const toolHandler = async (args: Record<string, unknown>) => {
   logToolRequest("update_vendor", args);
   const startTime = Date.now();
+  const typedArgs = args as ToolInput;
 
   try {
-    const response = await updateQuickbooksVendor(args.vendor);
+    const response = await updateQuickbooksVendor(typedArgs.vendor);
 
     if (response.isError) {
       logToolResponse("update_vendor", false, Date.now() - startTime);
-      logger.error(`Failed to update vendor: ${response.error}`, undefined, { vendorId: args.vendor?.Id });
+      logger.error(`Failed to update vendor: ${response.error}`, undefined, { vendorId: typedArgs.vendor?.Id });
       return {
         content: [
           {
@@ -52,7 +56,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
     const vendor = response.result;
 
     logToolResponse("update_vendor", true, Date.now() - startTime);
-    logger.info("Vendor updated successfully", { vendorId: args.vendor?.Id });
+    logger.info("Vendor updated successfully", { vendorId: typedArgs.vendor?.Id });
     return {
       content: [
         {
@@ -63,7 +67,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
     };
   } catch (error) {
     logToolResponse("update_vendor", false, Date.now() - startTime);
-    logger.error("Failed to update vendor", error, { vendorId: args.vendor?.Id });
+    logger.error("Failed to update vendor", error, { vendorId: typedArgs.vendor?.Id });
     throw error;
   }
 };
