@@ -2,6 +2,21 @@
 
 Date: 2026-02-01
 
+---
+
+## IMPORTANT: Build Requirement
+
+> **mcporter and the generated CLI run `dist/index.js`, and `dist/` is gitignored.**
+>
+> After switching branches or pulling new changes, you **MUST** either:
+>
+> 1. Run `npm run build` to compile TypeScript to `dist/`, **OR**
+> 2. Use the auto-build wrapper script: `bin/quickbooks-mcp` (if available)
+>
+> Without this step, you will be running stale code from a previous build!
+
+---
+
 ## Context
 
 We use this MCP server via:
@@ -103,22 +118,37 @@ The normalization pass covered (at minimum):
 
 ## Verification
 
-Examples that should now produce clean JSON:
+### Step 1: Build the project
 
 ```bash
-mcporter call QuickBooks.search_vendors limit:3 --output json
-mcporter call QuickBooks.search_tax_codes --output json
-mcporter call QuickBooks.search_purchases desc:TxnDate limit:3 --output json
-mcporter call QuickBooks.search_customers limit:3 --output json
-mcporter call QuickBooks.health_check --output json
+npm run build
 ```
 
-The bundled CLI should also work cleanly:
+### Step 2: Run tests
+
+```bash
+npm test
+```
+
+### Step 3: Verify JSON output is parseable by jq
+
+Examples that should produce clean JSON:
+
+```bash
+# All outputs should be parseable by jq
+mcporter call QuickBooks.search_vendors limit:3 --output json | jq .
+mcporter call QuickBooks.search_tax_codes --output json | jq .
+mcporter call QuickBooks.search_purchases desc:TxnDate limit:3 --output json | jq .
+mcporter call QuickBooks.search_customers limit:3 --output json | jq .
+mcporter call QuickBooks.health_check --output json | jq .
+```
+
+### Step 4: Verify the bundled CLI (optional)
 
 ```bash
 cd /home/timmy/claw-spaces/don
 mcporter generate-cli --server QuickBooks --output ./generated/QuickBooks.ts --bundle ./bin/quickbooks
-./bin/quickbooks -o json search-vendors --limit 3
+./bin/quickbooks -o json search-vendors --limit 3 | jq .
 ```
 
 ## Fixed: `count:true` now works for all search endpoints
@@ -135,12 +165,10 @@ The issue was in how `buildQuickbooksSearchCriteria` passed the count option to 
 ### Fix
 
 1. **Criteria builder** (`src/helpers/build-quickbooks-search-criteria.ts`):
-
    - Now adds `{count: true}` at index 0 of the criteria array instead of `{field: 'count', value: true}`
    - Placing at index 0 works around a splice bug in `node-quickbooks` (line 2517: `criteria.splice(i, i + 1)` removes `i + 1` elements instead of 1)
 
 2. **New helper functions**:
-
    - `isCountQuery(criteria)`: Checks if a criteria array/object has count mode enabled
    - `extractQueryResult(queryResponse, entityKey, isCount)`: Extracts entity array or `totalCount` from `QueryResponse`
 
