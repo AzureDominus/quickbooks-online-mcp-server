@@ -40,6 +40,27 @@ npm run test:coverage      # Run tests with c8 coverage
 npm run watch              # Watch and rebuild TypeScript
 ```
 
+## Running the MCP Server
+
+When running the MCP server via mcporter, CLI tools, or directly, use the auto-build wrapper script:
+
+```bash
+# Preferred method - auto-builds if sources are newer than dist
+./bin/quickbooks-mcp
+
+# The script will:
+# 1. Check for node_modules (errors if missing, telling you to run npm install)
+# 2. Rebuild dist/ if:
+#    - dist/index.js is missing
+#    - Any src/**/*.ts file is newer than dist/index.js
+#    - package.json, package-lock.json, or tsconfig.json is newer
+# 3. Run `node dist/index.js` with any passed arguments
+```
+
+This is important because `dist/` is gitignored. After switching branches, the compiled JavaScript may be stale even if TypeScript sources are fixed. The script ensures you always run against up-to-date code.
+
+For mcporter configurations, point to `bin/quickbooks-mcp` instead of `dist/index.js`.
+
 ## Directory Structure
 
 ```
