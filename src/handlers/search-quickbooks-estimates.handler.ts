@@ -1,15 +1,21 @@
-import { quickbooksClient } from "../clients/quickbooks-client.js";
-import { ToolResponse } from "../types/tool-response.js";
-import { formatError } from "../helpers/format-error.js";
+import { quickbooksClient } from '../clients/quickbooks-client.js';
+import { ToolResponse } from '../types/tool-response.js';
+import { formatError } from '../helpers/format-error.js';
+import { buildQuickbooksSearchCriteria } from '../helpers/build-quickbooks-search-criteria.js';
 
 /**
  * Search estimates from QuickBooks Online using the supplied criteria.
- * The criteria object is passed directly to node‑quickbooks `findEstimates`.
+ * The criteria object is processed through buildQuickbooksSearchCriteria
+ * and passed to node‑quickbooks `findEstimates`.
  */
-export async function searchQuickbooksEstimates(criteria: object | Array<Record<string, any>> = {}): Promise<ToolResponse<any[]>> {
+export async function searchQuickbooksEstimates(
+  params: object | Array<Record<string, any>> = {}
+): Promise<ToolResponse<any[]>> {
   try {
     await quickbooksClient.authenticate();
     const quickbooks = quickbooksClient.getQuickbooks();
+
+    const criteria = buildQuickbooksSearchCriteria(params);
 
     return new Promise((resolve) => {
       (quickbooks as any).findEstimates(criteria as any, (err: any, estimates: any) => {
@@ -22,9 +28,7 @@ export async function searchQuickbooksEstimates(criteria: object | Array<Record<
         } else {
           resolve({
             result:
-              estimates?.QueryResponse?.Estimate ??
-              estimates?.QueryResponse?.totalCount ??
-              [],
+              estimates?.QueryResponse?.Estimate ?? estimates?.QueryResponse?.totalCount ?? [],
             isError: false,
             error: null,
           });
@@ -38,4 +42,4 @@ export async function searchQuickbooksEstimates(criteria: object | Array<Record<
       error: formatError(error),
     };
   }
-} 
+}

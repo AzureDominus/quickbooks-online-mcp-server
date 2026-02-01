@@ -1,10 +1,10 @@
-import { createQuickbooksItem } from "../handlers/create-quickbooks-item.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { createQuickbooksItem } from '../handlers/create-quickbooks-item.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
-const toolName = "create_item";
+const toolName = 'create_item';
 const toolDescription = `Create an item in QuickBooks Online.
 
 IDEMPOTENCY:
@@ -18,43 +18,53 @@ const toolSchema = z.object({
   expense_account_ref: z.string().optional(),
   unit_price: z.number().optional(),
   description: z.string().optional(),
-  idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate item creation on retry"),
+  idempotencyKey: z
+    .string()
+    .optional()
+    .describe('Optional key to prevent duplicate item creation on retry'),
 });
 
-const toolHandler = async ({ params }: any) => {
+/** Inferred input type from Zod schema */
+type ToolInput = z.infer<typeof toolSchema>;
+
+const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
-  
-  logToolRequest(toolName, params);
+  // Args are passed directly (RegisterTool extracts raw shape)
+  const typedArgs = args as ToolInput;
+
+  logToolRequest(toolName, typedArgs);
 
   try {
     // Check idempotency first
-    const existingId = checkIdempotency(params.idempotencyKey);
+    const existingId = checkIdempotency(typedArgs.idempotencyKey);
     if (existingId) {
       logger.info('Idempotency hit - returning cached result', {
-        idempotencyKey: params.idempotencyKey,
+        idempotencyKey: typedArgs.idempotencyKey,
         existingId,
       });
-      
+
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Item already exists (idempotent):` },
-          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+          { type: 'text' as const, text: `Item already exists (idempotent):` },
+          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
     }
 
-    const response = await createQuickbooksItem(params);
-    
+    const response = await createQuickbooksItem(typedArgs);
+
     if (response.isError) {
       logger.error('Failed to create item', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
-      return { content: [{ type: "text" as const, text: `Error creating item: ${response.error}` }] };
+      return {
+        content: [{ type: 'text' as const, text: `Error creating item: ${response.error}` }],
+      };
     }
 
     // Store idempotency result
     if (response.result?.Id) {
-      storeIdempotency(params.idempotencyKey, response.result.Id, 'Item');
+      storeIdempotency(typedArgs.idempotencyKey, response.result.Id, 'Item');
     }
 
     logger.info('Item created successfully', {
@@ -66,8 +76,8 @@ const toolHandler = async ({ params }: any) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Item created successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
+        { type: 'text' as const, text: `Item created successfully:` },
+        { type: 'text' as const, text: JSON.stringify(response.result, null, 2) },
       ],
     };
   } catch (error) {
@@ -75,7 +85,10 @@ const toolHandler = async ({ params }: any) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -86,4 +99,4 @@ export const CreateItemTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

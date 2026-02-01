@@ -1,10 +1,10 @@
-import { createQuickbooksAccount } from "../handlers/create-quickbooks-account.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { createQuickbooksAccount } from '../handlers/create-quickbooks-account.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
-const toolName = "create_account";
+const toolName = 'create_account';
 const toolDescription = `Create a chart‑of‑accounts entry in QuickBooks Online.
 
 IDEMPOTENCY:
@@ -16,43 +16,53 @@ const toolSchema = z.object({
   type: z.string().min(1),
   sub_type: z.string().optional(),
   description: z.string().optional(),
-  idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate account creation on retry"),
+  idempotencyKey: z
+    .string()
+    .optional()
+    .describe('Optional key to prevent duplicate account creation on retry'),
 });
 
-const toolHandler = async ({ params }: any) => {
+/** Inferred input type from Zod schema */
+type ToolInput = z.infer<typeof toolSchema>;
+
+const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
-  
-  logToolRequest(toolName, params);
+  // Args are passed directly (RegisterTool extracts raw shape)
+  const typedArgs = args as ToolInput;
+
+  logToolRequest(toolName, typedArgs);
 
   try {
     // Check idempotency first
-    const existingId = checkIdempotency(params.idempotencyKey);
+    const existingId = checkIdempotency(typedArgs.idempotencyKey);
     if (existingId) {
       logger.info('Idempotency hit - returning cached result', {
-        idempotencyKey: params.idempotencyKey,
+        idempotencyKey: typedArgs.idempotencyKey,
         existingId,
       });
-      
+
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Account already exists (idempotent):` },
-          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+          { type: 'text' as const, text: `Account already exists (idempotent):` },
+          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
     }
 
-    const response = await createQuickbooksAccount(params);
-    
+    const response = await createQuickbooksAccount(typedArgs);
+
     if (response.isError) {
       logger.error('Failed to create account', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
-      return { content: [{ type: "text" as const, text: `Error creating account: ${response.error}` }] };
+      return {
+        content: [{ type: 'text' as const, text: `Error creating account: ${response.error}` }],
+      };
     }
 
     // Store idempotency result
     if (response.result?.Id) {
-      storeIdempotency(params.idempotencyKey, response.result.Id, 'Account');
+      storeIdempotency(typedArgs.idempotencyKey, response.result.Id, 'Account');
     }
 
     logger.info('Account created successfully', {
@@ -64,8 +74,8 @@ const toolHandler = async ({ params }: any) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Account created successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
+        { type: 'text' as const, text: `Account created successfully:` },
+        { type: 'text' as const, text: JSON.stringify(response.result, null, 2) },
       ],
     };
   } catch (error) {
@@ -73,7 +83,10 @@ const toolHandler = async ({ params }: any) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -84,4 +97,4 @@ export const CreateAccountTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

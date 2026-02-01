@@ -1,10 +1,10 @@
-import { createQuickbooksInvoice } from "../handlers/create-quickbooks-invoice.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { checkIdempotency, storeIdempotency } from "../helpers/idempotency.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { createQuickbooksInvoice } from '../handlers/create-quickbooks-invoice.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
-const toolName = "create_invoice";
+const toolName = 'create_invoice';
 const toolDescription = `Create an invoice in QuickBooks Online.
 
 IDEMPOTENCY:
@@ -23,7 +23,10 @@ const toolSchema = z.object({
   line_items: z.array(lineItemSchema).min(1),
   doc_number: z.string().optional(),
   txn_date: z.string().optional(),
-  idempotencyKey: z.string().optional().describe("Optional key to prevent duplicate invoice creation on retry"),
+  idempotencyKey: z
+    .string()
+    .optional()
+    .describe('Optional key to prevent duplicate invoice creation on retry'),
 });
 
 /** Inferred input type from Zod schema */
@@ -31,43 +34,46 @@ type ToolInput = z.infer<typeof toolSchema>;
 
 const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
-  const params = (args as { params?: ToolInput }).params;
-  if (!params) {
-    return { content: [{ type: "text" as const, text: "Error: Missing params" }] };
-  }
-  
-  logToolRequest(toolName, { ...params, line_items: `[${params.line_items?.length || 0} items]` });
+  // Args are passed directly (RegisterTool extracts raw shape)
+  const typedArgs = args as ToolInput;
+
+  logToolRequest(toolName, {
+    ...typedArgs,
+    line_items: `[${typedArgs.line_items?.length || 0} items]`,
+  });
 
   try {
     // Check idempotency first
-    const existingId = checkIdempotency(params.idempotencyKey);
+    const existingId = checkIdempotency(typedArgs.idempotencyKey);
     if (existingId) {
       logger.info('Idempotency hit - returning cached result', {
-        idempotencyKey: params.idempotencyKey,
+        idempotencyKey: typedArgs.idempotencyKey,
         existingId,
       });
-      
+
       logToolResponse(toolName, true, Date.now() - startTime);
       return {
         content: [
-          { type: "text" as const, text: `Invoice already exists (idempotent):` },
-          { type: "text" as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
+          { type: 'text' as const, text: `Invoice already exists (idempotent):` },
+          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
         ],
       };
     }
 
     // Create the invoice
-    const response = await createQuickbooksInvoice(params);
-    
+    const response = await createQuickbooksInvoice(typedArgs);
+
     if (response.isError) {
       logger.error('Failed to create invoice', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
-      return { content: [{ type: "text" as const, text: `Error creating invoice: ${response.error}` }] };
+      return {
+        content: [{ type: 'text' as const, text: `Error creating invoice: ${response.error}` }],
+      };
     }
 
     // Store idempotency result
     if (response.result?.Id) {
-      storeIdempotency(params.idempotencyKey, response.result.Id, 'Invoice');
+      storeIdempotency(typedArgs.idempotencyKey, response.result.Id, 'Invoice');
     }
 
     logger.info('Invoice created successfully', {
@@ -78,8 +84,8 @@ const toolHandler = async (args: Record<string, unknown>) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Invoice created successfully:` },
-        { type: "text" as const, text: JSON.stringify(response.result, null, 2) },
+        { type: 'text' as const, text: `Invoice created successfully:` },
+        { type: 'text' as const, text: JSON.stringify(response.result, null, 2) },
       ],
     };
   } catch (error) {
@@ -87,7 +93,10 @@ const toolHandler = async (args: Record<string, unknown>) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -98,4 +107,4 @@ export const CreateInvoiceTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

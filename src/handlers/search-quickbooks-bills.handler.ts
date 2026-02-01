@@ -1,6 +1,7 @@
-import { quickbooksClient } from "../clients/quickbooks-client.js";
-import { ToolResponse } from "../types/tool-response.js";
-import { formatError } from "../helpers/format-error.js";
+import { quickbooksClient } from '../clients/quickbooks-client.js';
+import { ToolResponse } from '../types/tool-response.js';
+import { formatError } from '../helpers/format-error.js';
+import { buildQuickbooksSearchCriteria } from '../helpers/build-quickbooks-search-criteria.js';
 
 /**
  * Search bills from QuickBooks Online.
@@ -9,15 +10,20 @@ import { formatError } from "../helpers/format-error.js";
  *   • A plain criteria object (key/value pairs) – passed directly to findBills
  *   • An **array** of objects in the `{ field, value, operator? }` shape – this
  *     allows use of operators such as `IN`, `LIKE`, `>`, `<`, `>=`, `<=` etc.
+ *   • An AdvancedQuickbooksSearchOptions object with criteria/filters array
  *
  * Pagination / sorting options such as `limit`, `offset`, `asc`, `desc`,
  * `fetchAll`, `count` can be supplied via the top‑level criteria object or as
  * dedicated entries in the array form.
  */
-export async function searchQuickbooksBills(criteria: object | Array<Record<string, any>> = {}): Promise<ToolResponse<any[]>> {
+export async function searchQuickbooksBills(
+  params: object | Array<Record<string, any>> = {}
+): Promise<ToolResponse<any[]>> {
   try {
     await quickbooksClient.authenticate();
     const quickbooks = quickbooksClient.getQuickbooks();
+
+    const criteria = buildQuickbooksSearchCriteria(params);
 
     return new Promise((resolve) => {
       (quickbooks as any).findBills(criteria as any, (err: any, bills: any) => {
@@ -29,10 +35,7 @@ export async function searchQuickbooksBills(criteria: object | Array<Record<stri
           });
         } else {
           resolve({
-            result:
-              bills?.QueryResponse?.Bill ??
-              bills?.QueryResponse?.totalCount ??
-              [],
+            result: bills?.QueryResponse?.Bill ?? bills?.QueryResponse?.totalCount ?? [],
             isError: false,
             error: null,
           });
@@ -46,4 +49,4 @@ export async function searchQuickbooksBills(criteria: object | Array<Record<stri
       error: formatError(error),
     };
   }
-} 
+}

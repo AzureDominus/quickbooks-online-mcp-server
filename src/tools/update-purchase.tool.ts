@@ -1,12 +1,13 @@
-import { updateQuickbooksPurchase } from "../handlers/update-quickbooks-purchase.handler.js";
-import { ToolDefinition } from "../types/tool-definition.js";
-import { z } from "zod";
-import { UpdatePurchaseInputSchema, type UpdatePurchaseInput } from "../types/qbo-schemas.js";
-import { transformPurchaseFromQBO } from "../helpers/transform.js";
-import { logger, logToolRequest, logToolResponse } from "../helpers/logger.js";
+import { updateQuickbooksPurchase } from '../handlers/update-quickbooks-purchase.handler.js';
+import { getQuickbooksPurchase } from '../handlers/get-quickbooks-purchase.handler.js';
+import { ToolDefinition } from '../types/tool-definition.js';
+import { z } from 'zod';
+import { UpdatePurchaseInputSchema, type UpdatePurchaseInput } from '../types/qbo-schemas.js';
+import { transformPurchaseFromQBO } from '../helpers/transform.js';
+import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
 // Define the tool metadata
-const toolName = "update_purchase";
+const toolName = 'update_purchase';
 const toolDescription = `Update an existing expense/purchase transaction in QuickBooks Online.
 
 REQUIRED FIELDS:
@@ -61,35 +62,63 @@ const toolSchema = z.object({
 const toolHandler = async (args: { [x: string]: any }) => {
   const startTime = Date.now();
   const input = args.purchase as UpdatePurchaseInput;
-  
+
   logToolRequest(toolName, { purchaseId: input.purchaseId });
 
   try {
     // Validation: ensure at least one update field is provided
     const updateFields = [
-      input.txnDate, input.paymentType, input.paymentAccountId,
-      input.vendorId, input.vendorName, input.memo, input.privateNote,
-      input.referenceNumber, input.globalTaxCalculation, input.lines,
+      input.txnDate,
+      input.paymentType,
+      input.paymentAccountId,
+      input.vendorId,
+      input.vendorName,
+      input.memo,
+      input.privateNote,
+      input.referenceNumber,
+      input.globalTaxCalculation,
+      input.lines,
     ];
-    
-    if (!updateFields.some(v => v !== undefined)) {
+
+    if (!updateFields.some((v) => v !== undefined)) {
       return {
         content: [
-          { type: "text" as const, text: `Error: At least one field to update must be provided` },
+          { type: 'text' as const, text: `Error: At least one field to update must be provided` },
         ],
       };
     }
 
+    // First, fetch the current purchase to get the SyncToken
+    const currentPurchaseResponse = await getQuickbooksPurchase(input.purchaseId);
+    if (currentPurchaseResponse.isError) {
+      logger.error(
+        'Failed to fetch current purchase',
+        new Error(currentPurchaseResponse.error || 'Unknown error')
+      );
+      logToolResponse(toolName, false, Date.now() - startTime);
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error fetching purchase: ${currentPurchaseResponse.error}`,
+          },
+        ],
+      };
+    }
+
+    const currentPurchase = currentPurchaseResponse.result;
+
     // Build the update payload
-    // Note: The handler expects a full purchase object with Id and changes
-    // We need to fetch the current purchase first to get SyncToken
+    // Note: The handler expects a full purchase object with Id, SyncToken, and changes
+    // PaymentType is required by QBO even for sparse updates
     const updatePayload: Record<string, unknown> = {
       Id: input.purchaseId,
+      SyncToken: currentPurchase.SyncToken,
+      PaymentType: input.paymentType || currentPurchase.PaymentType, // Required field
       sparse: true, // Use sparse update to only change specified fields
     };
 
     if (input.txnDate) updatePayload.TxnDate = input.txnDate;
-    if (input.paymentType) updatePayload.PaymentType = input.paymentType;
     if (input.paymentAccountId) {
       updatePayload.AccountRef = { value: input.paymentAccountId };
     }
@@ -103,7 +132,7 @@ const toolHandler = async (args: { [x: string]: any }) => {
       updatePayload.GlobalTaxCalculation = input.globalTaxCalculation;
     }
     if (input.lines) {
-      updatePayload.Line = input.lines.map(line => ({
+      updatePayload.Line = input.lines.map((line) => ({
         Amount: line.amount,
         DetailType: 'AccountBasedExpenseLineDetail',
         Description: line.description,
@@ -125,15 +154,13 @@ const toolHandler = async (args: { [x: string]: any }) => {
       logger.error('Failed to update purchase', new Error(response.error || 'Unknown error'));
       logToolResponse(toolName, false, Date.now() - startTime);
       return {
-        content: [
-          { type: "text" as const, text: `Error updating purchase: ${response.error}` },
-        ],
+        content: [{ type: 'text' as const, text: `Error updating purchase: ${response.error}` }],
       };
     }
 
     // Transform response to user-friendly format
     const transformedResult = transformPurchaseFromQBO(response.result);
-    
+
     logger.info('Purchase updated successfully', {
       purchaseId: input.purchaseId,
     });
@@ -141,8 +168,8 @@ const toolHandler = async (args: { [x: string]: any }) => {
 
     return {
       content: [
-        { type: "text" as const, text: `Purchase updated successfully:` },
-        { type: "text" as const, text: JSON.stringify(transformedResult, null, 2) },
+        { type: 'text' as const, text: `Purchase updated successfully:` },
+        { type: 'text' as const, text: JSON.stringify(transformedResult, null, 2) },
       ],
     };
   } catch (error) {
@@ -150,7 +177,10 @@ const toolHandler = async (args: { [x: string]: any }) => {
     logToolResponse(toolName, false, Date.now() - startTime);
     return {
       content: [
-        { type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ],
     };
   }
@@ -161,4 +191,4 @@ export const UpdatePurchaseTool: ToolDefinition<typeof toolSchema> = {
   description: toolDescription,
   schema: toolSchema,
   handler: toolHandler,
-}; 
+};

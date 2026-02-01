@@ -1,17 +1,27 @@
-import { quickbooksClient } from "../clients/quickbooks-client.js";
-import { ToolResponse } from "../types/tool-response.js";
-import { formatError } from "../helpers/format-error.js";
+import { quickbooksClient } from '../clients/quickbooks-client.js';
+import { ToolResponse } from '../types/tool-response.js';
+import { formatError } from '../helpers/format-error.js';
 
 /**
- * Delete a vendor in QuickBooks Online
+ * Delete (make inactive) a vendor in QuickBooks Online
+ * QuickBooks doesn't support hard deletes for vendors, so we set Active=false
  */
 export async function deleteQuickbooksVendor(vendor: any): Promise<ToolResponse<any>> {
   try {
     await quickbooksClient.authenticate();
     const quickbooks = quickbooksClient.getQuickbooks();
 
+    // QuickBooks API doesn't support hard deletes for vendors
+    // Instead, we mark them as inactive by setting Active=false
+    const updatePayload = {
+      Id: vendor.Id,
+      SyncToken: vendor.SyncToken,
+      Active: false,
+      sparse: true,
+    };
+
     return new Promise((resolve) => {
-      quickbooks.deleteVendor(vendor, (err: any, deletedVendor: any) => {
+      quickbooks.updateVendor(updatePayload, (err: any, updatedVendor: any) => {
         if (err) {
           resolve({
             result: null,
@@ -20,7 +30,7 @@ export async function deleteQuickbooksVendor(vendor: any): Promise<ToolResponse<
           });
         } else {
           resolve({
-            result: deletedVendor,
+            result: updatedVendor,
             isError: false,
             error: null,
           });
@@ -34,4 +44,4 @@ export async function deleteQuickbooksVendor(vendor: any): Promise<ToolResponse<
       error: formatError(error),
     };
   }
-} 
+}
