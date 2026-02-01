@@ -16,6 +16,10 @@ const lineItemSchema = z.object({
   qty: z.number().positive(),
   unit_price: z.number().nonnegative(),
   description: z.string().optional(),
+  tax_code_ref: z
+    .string()
+    .optional()
+    .describe('Tax code ID (e.g., "5" for HST in Canada). Required for Canadian companies.'),
 });
 
 const toolSchema = z.object({

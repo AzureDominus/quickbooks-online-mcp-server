@@ -1,6 +1,6 @@
-import { quickbooksClient } from "../clients/quickbooks-client.js";
-import { ToolResponse } from "../types/tool-response.js";
-import { formatError } from "../helpers/format-error.js";
+import { quickbooksClient } from '../clients/quickbooks-client.js';
+import { ToolResponse } from '../types/tool-response.js';
+import { formatError } from '../helpers/format-error.js';
 
 export interface CreateInvoiceInput {
   customer_ref: string; // customer id
@@ -9,19 +9,20 @@ export interface CreateInvoiceInput {
     qty: number;
     unit_price: number;
     description?: string;
+    tax_code_ref?: string; // tax code id (e.g., "5" for HST)
   }>;
   doc_number?: string;
   txn_date?: string; // YYYY-MM-DD
 }
 
 // Primitive field type map (based on Quickbooks Invoice entity reference docs)
-const invoiceFieldTypeMap: Record<string, "string" | "number" | "boolean"> = {
-  DocNumber: "string",
-  TxnDate: "string",
-  PrivateNote: "string",
-  GlobalTaxCalculation: "string",
-  ApplyTaxAfterDiscount: "boolean",
-  TotalAmt: "number",
+const invoiceFieldTypeMap: Record<string, 'string' | 'number' | 'boolean'> = {
+  DocNumber: 'string',
+  TxnDate: 'string',
+  PrivateNote: 'string',
+  GlobalTaxCalculation: 'string',
+  ApplyTaxAfterDiscount: 'boolean',
+  TotalAmt: 'number',
 };
 
 /**
@@ -35,21 +36,23 @@ function normalizeInvoiceFields(obj: Record<string, any>): Record<string, any> {
     if (!expected) continue; // skip if not a primitive field we validate
 
     switch (expected) {
-      case "string":
+      case 'string':
         normalized[key] = String(value);
         break;
-      case "number":
-        normalized[key] = typeof value === "number" ? value : Number(value);
+      case 'number':
+        normalized[key] = typeof value === 'number' ? value : Number(value);
         break;
-      case "boolean":
-        normalized[key] = typeof value === "boolean" ? value : value === "true";
+      case 'boolean':
+        normalized[key] = typeof value === 'boolean' ? value : value === 'true';
         break;
     }
   }
   return normalized;
 }
 
-export async function createQuickbooksInvoice(data: CreateInvoiceInput): Promise<ToolResponse<any>> {
+export async function createQuickbooksInvoice(
+  data: CreateInvoiceInput
+): Promise<ToolResponse<any>> {
   try {
     await quickbooksClient.authenticate();
     const quickbooks = quickbooksClient.getQuickbooks();
@@ -61,11 +64,12 @@ export async function createQuickbooksInvoice(data: CreateInvoiceInput): Promise
         LineNum: idx + 1,
         Description: l.description || undefined,
         Amount: l.qty * l.unit_price,
-        DetailType: "SalesItemLineDetail",
+        DetailType: 'SalesItemLineDetail',
         SalesItemLineDetail: {
           ItemRef: { value: l.item_ref },
           Qty: l.qty,
           UnitPrice: l.unit_price,
+          ...(l.tax_code_ref && { TaxCodeRef: { value: l.tax_code_ref } }),
         },
       })),
       DocNumber: data.doc_number,
@@ -86,4 +90,4 @@ export async function createQuickbooksInvoice(data: CreateInvoiceInput): Promise
   } catch (error) {
     return { result: null, isError: true, error: formatError(error) };
   }
-} 
+}
