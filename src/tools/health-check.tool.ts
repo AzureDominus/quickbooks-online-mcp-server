@@ -74,44 +74,39 @@ const toolHandler = async (_args: Record<string, unknown>) => {
       result.status = 'degraded';
     }
 
-    // Check 2: OAuth Status - check if tokens exist (don't trigger OAuth flow!)
-    try {
-      const hasTokens = quickbooksClient.hasRefreshToken();
-      if (hasTokens) {
-        // Only try to get authenticated instance if we already have tokens
-        try {
-          quickbooksClient.getQuickbooks();
-          result.checks.oauth = {
-            status: 'ok',
-            authenticated: true,
-          };
-        } catch {
-          // Tokens exist but not authenticated yet - try to authenticate
-          await quickbooksClient.authenticate();
-          result.checks.oauth = {
-            status: 'ok',
-            authenticated: true,
-          };
-        }
-      } else {
-        result.checks.oauth = {
-          status: 'error',
-          authenticated: false,
-          message: 'No OAuth tokens found. Run authentication flow first.',
-        };
-        result.status = 'unhealthy';
-      }
-    } catch (oauthError) {
+    // Check 2: OAuth Status - NEVER trigger OAuth flow, just check state
+    const hasTokens = quickbooksClient.hasRefreshToken();
+    let isAuthenticated = false;
+
+    if (!hasTokens) {
       result.checks.oauth = {
         status: 'error',
         authenticated: false,
-        message: oauthError instanceof Error ? oauthError.message : String(oauthError),
+        message: 'No OAuth tokens found. Run authentication flow first.',
       };
       result.status = 'unhealthy';
+    } else {
+      // Check if we have an active QuickBooks instance
+      try {
+        quickbooksClient.getQuickbooks();
+        isAuthenticated = true;
+        result.checks.oauth = {
+          status: 'ok',
+          authenticated: true,
+        };
+      } catch {
+        // Tokens exist but session not established yet
+        result.checks.oauth = {
+          status: 'ok',
+          authenticated: false,
+          message:
+            'Tokens exist but not authenticated in this session. First API call will authenticate.',
+        };
+      }
     }
 
-    // Check 3: API Connectivity - try a simple API call (CompanyInfo)
-    if (result.checks.oauth.authenticated) {
+    // Check 3: API Connectivity - only if already authenticated
+    if (isAuthenticated) {
       const apiStartTime = Date.now();
       try {
         const qb = quickbooksClient.getQuickbooks() as any;
