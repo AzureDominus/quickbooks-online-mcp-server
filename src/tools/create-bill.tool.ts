@@ -3,6 +3,7 @@ import { ToolDefinition } from '../types/tool-definition.js';
 import { z } from 'zod';
 import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { buildCreateToolPayload } from '../helpers/create-tool-output.js';
 
 const toolName = 'create_bill';
 const toolDescription = `Create a bill in QuickBooks Online.
@@ -74,6 +75,12 @@ const toolSchema = z.object({
     .string()
     .optional()
     .describe('Optional unique key to prevent duplicate bill creation on retry'),
+  responseFormat: z
+    .enum(['raw', 'envelope'])
+    .optional()
+    .describe(
+      "Optional output format. 'raw' preserves existing output; 'envelope' wraps with meta."
+    ),
 });
 
 /** Inferred input type from Zod schema */
@@ -83,6 +90,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
   const typedArgs = args as ToolInput;
   const { bill, idempotencyKey } = typedArgs;
+  const responseFormat = typedArgs.responseFormat;
 
   logToolRequest(toolName, {
     vendorRef: bill.VendorRef?.value,
@@ -100,10 +108,16 @@ const toolHandler = async (args: Record<string, unknown>) => {
       });
 
       logToolResponse(toolName, true, Date.now() - startTime);
+
+      const payload = buildCreateToolPayload({
+        entityType: 'Bill',
+        id: existingId,
+        wasIdempotent: true,
+        format: responseFormat,
+      });
+
       return {
-        content: [
-          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
-        ],
+        content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
       };
     }
 
@@ -139,8 +153,15 @@ const toolHandler = async (args: Record<string, unknown>) => {
     });
     logToolResponse(toolName, true, Date.now() - startTime);
 
+    const payload = buildCreateToolPayload({
+      entityType: 'Bill',
+      entity: createdBill,
+      wasIdempotent: false,
+      format: responseFormat,
+    });
+
     return {
-      content: [{ type: 'text' as const, text: JSON.stringify(createdBill) }],
+      content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create-bill', error);

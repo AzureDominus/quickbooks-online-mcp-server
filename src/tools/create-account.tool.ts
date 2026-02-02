@@ -3,6 +3,7 @@ import { ToolDefinition } from '../types/tool-definition.js';
 import { z } from 'zod';
 import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { buildCreateToolPayload } from '../helpers/create-tool-output.js';
 
 const toolName = 'create_account';
 const toolDescription = `Create a chart‑of‑accounts entry in QuickBooks Online.
@@ -20,6 +21,12 @@ const toolSchema = z.object({
     .string()
     .optional()
     .describe('Optional key to prevent duplicate account creation on retry'),
+  responseFormat: z
+    .enum(['raw', 'envelope'])
+    .optional()
+    .describe(
+      "Optional output format. 'raw' preserves existing output; 'envelope' wraps with meta."
+    ),
 });
 
 /** Inferred input type from Zod schema */
@@ -29,6 +36,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
   // Args are passed directly (RegisterTool extracts raw shape)
   const typedArgs = args as ToolInput;
+  const responseFormat = typedArgs.responseFormat;
 
   logToolRequest(toolName, typedArgs);
 
@@ -42,10 +50,16 @@ const toolHandler = async (args: Record<string, unknown>) => {
       });
 
       logToolResponse(toolName, true, Date.now() - startTime);
+
+      const payload = buildCreateToolPayload({
+        entityType: 'Account',
+        id: existingId,
+        wasIdempotent: true,
+        format: responseFormat,
+      });
+
       return {
-        content: [
-          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
-        ],
+        content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
       };
     }
 
@@ -71,8 +85,15 @@ const toolHandler = async (args: Record<string, unknown>) => {
     });
     logToolResponse(toolName, true, Date.now() - startTime);
 
+    const payload = buildCreateToolPayload({
+      entityType: 'Account',
+      entity: response.result,
+      wasIdempotent: false,
+      format: responseFormat,
+    });
+
     return {
-      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
+      content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_account', error);

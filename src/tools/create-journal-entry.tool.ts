@@ -7,6 +7,7 @@ import {
 } from '../types/qbo-schemas.js';
 import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { buildCreateToolPayload } from '../helpers/create-tool-output.js';
 
 // Define the tool metadata
 const toolName = 'create_journal_entry';
@@ -70,12 +71,19 @@ const toolSchema = z.object({
     .string()
     .optional()
     .describe('Optional key to prevent duplicate journal entry creation on retry'),
+  responseFormat: z
+    .enum(['raw', 'envelope'])
+    .optional()
+    .describe(
+      "Optional output format. 'raw' preserves existing output; 'envelope' wraps with meta."
+    ),
 });
 
 // Define the tool handler
 const toolHandler = async (args: { [x: string]: any }) => {
   const startTime = Date.now();
   const input = args.journalEntry as CreateJournalEntryInput;
+  const responseFormat = args.responseFormat as 'raw' | 'envelope' | undefined;
 
   logToolRequest(toolName, {
     lineCount: input.Line?.length,
@@ -92,10 +100,16 @@ const toolHandler = async (args: { [x: string]: any }) => {
       });
 
       logToolResponse(toolName, true, Date.now() - startTime);
+
+      const payload = buildCreateToolPayload({
+        entityType: 'JournalEntry',
+        id: existingId,
+        wasIdempotent: true,
+        format: responseFormat,
+      });
+
       return {
-        content: [
-          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
-        ],
+        content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
       };
     }
 
@@ -144,8 +158,15 @@ const toolHandler = async (args: { [x: string]: any }) => {
     });
     logToolResponse(toolName, true, Date.now() - startTime);
 
+    const payload = buildCreateToolPayload({
+      entityType: 'JournalEntry',
+      entity: response.result,
+      wasIdempotent: false,
+      format: responseFormat,
+    });
+
     return {
-      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
+      content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_journal_entry', error);

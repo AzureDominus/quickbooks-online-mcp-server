@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { CreateEstimateInputSchema } from '../types/qbo-schemas.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
+import { buildCreateToolPayload } from '../helpers/create-tool-output.js';
 
 const toolName = 'create_estimate';
 const toolDescription = `Create an estimate (quote) in QuickBooks Online.
@@ -63,6 +64,12 @@ EXAMPLE:
 const toolSchema = z.object({
   estimate: CreateEstimateInputSchema,
   idempotencyKey: z.string().optional().describe('Optional key to prevent duplicate creation'),
+  responseFormat: z
+    .enum(['raw', 'envelope'])
+    .optional()
+    .describe(
+      "Optional output format. 'raw' preserves existing output; 'envelope' wraps with meta."
+    ),
 });
 
 // MCP SDK passes parsed args directly
@@ -70,6 +77,7 @@ const toolHandler = async (args: { [x: string]: unknown }) => {
   const startTime = Date.now();
   const input = args.estimate as z.infer<typeof CreateEstimateInputSchema>;
   const idempotencyKey = args.idempotencyKey as string | undefined;
+  const responseFormat = args.responseFormat as 'raw' | 'envelope' | undefined;
 
   logToolRequest(toolName, {
     CustomerRef: input.CustomerRef,
@@ -87,10 +95,16 @@ const toolHandler = async (args: { [x: string]: unknown }) => {
       });
 
       logToolResponse(toolName, true, Date.now() - startTime);
+
+      const payload = buildCreateToolPayload({
+        entityType: 'Estimate',
+        id: existingId,
+        wasIdempotent: true,
+        format: responseFormat,
+      });
+
       return {
-        content: [
-          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
-        ],
+        content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
       };
     }
 
@@ -120,8 +134,15 @@ const toolHandler = async (args: { [x: string]: unknown }) => {
     });
     logToolResponse(toolName, true, Date.now() - startTime);
 
+    const payload = buildCreateToolPayload({
+      entityType: 'Estimate',
+      entity: response.result,
+      wasIdempotent: false,
+      format: responseFormat,
+    });
+
     return {
-      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
+      content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_estimate', error);
