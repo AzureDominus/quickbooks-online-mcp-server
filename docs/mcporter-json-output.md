@@ -106,6 +106,27 @@ This is deliberate for now (easy to read). If we want fully machine-readable err
 { "error": { "message": "..." } }
 ```
 
+### 4) Create tools: optional envelope format (non-breaking)
+
+By default, `create_*` tools return the created entity directly.
+
+If you want a consistent wrapper across **all** create tools, pass `responseFormat: "envelope"`.
+
+Envelope shape:
+
+```json
+{
+  "entityType": "Vendor",
+  "entity": { /* created entity */ },
+  "meta": {
+    "id": "123",
+    "wasIdempotent": false
+  }
+}
+```
+
+This also normalizes idempotency-hit responses (which otherwise return `{ "Id": "...", "wasIdempotent": true }`).
+
 ### Tools updated
 
 The normalization pass covered (at minimum):

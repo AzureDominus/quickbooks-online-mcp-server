@@ -3,6 +3,7 @@ import { ToolDefinition } from '../types/tool-definition.js';
 import { z } from 'zod';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
+import { buildCreateToolPayload } from '../helpers/create-tool-output.js';
 
 const toolName = 'create_vendor';
 const toolDescription = `Create a vendor in QuickBooks Online.
@@ -52,6 +53,12 @@ const toolSchema = z.object({
     .string()
     .optional()
     .describe('Optional key to prevent duplicate vendor creation on retry'),
+  responseFormat: z
+    .enum(['raw', 'envelope'])
+    .optional()
+    .describe(
+      "Optional output format. 'raw' preserves existing output; 'envelope' wraps with meta."
+    ),
 });
 
 /** Inferred input type from Zod schema */
@@ -62,6 +69,7 @@ const toolHandler = async (args: Record<string, unknown>) => {
   const typedArgs = args as ToolInput;
   const input = typedArgs.vendor;
   const idempotencyKey = typedArgs.idempotencyKey;
+  const responseFormat = typedArgs.responseFormat;
 
   logToolRequest(toolName, { DisplayName: input?.DisplayName, idempotencyKey });
 
@@ -75,10 +83,16 @@ const toolHandler = async (args: Record<string, unknown>) => {
       });
 
       logToolResponse(toolName, true, Date.now() - startTime);
+
+      const payload = buildCreateToolPayload({
+        entityType: 'Vendor',
+        id: existingId,
+        wasIdempotent: true,
+        format: responseFormat,
+      });
+
       return {
-        content: [
-          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
-        ],
+        content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
       };
     }
 
@@ -114,8 +128,15 @@ const toolHandler = async (args: Record<string, unknown>) => {
     });
     logToolResponse(toolName, true, Date.now() - startTime);
 
+    const payload = buildCreateToolPayload({
+      entityType: 'Vendor',
+      entity: vendor,
+      wasIdempotent: false,
+      format: responseFormat,
+    });
+
     return {
-      content: [{ type: 'text' as const, text: JSON.stringify(vendor) }],
+      content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create-vendor', error);

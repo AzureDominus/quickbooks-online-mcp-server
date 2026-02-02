@@ -9,6 +9,7 @@ import {
 } from '../helpers/transform.js';
 import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { buildCreateToolPayload } from '../helpers/create-tool-output.js';
 
 // Define the tool metadata
 const toolName = 'create_purchase';
@@ -62,6 +63,12 @@ Example:
 // Use the properly typed schema
 const toolSchema = z.object({
   purchase: CreatePurchaseInputSchema,
+  responseFormat: z
+    .enum(['raw', 'envelope'])
+    .optional()
+    .describe(
+      "Optional output format. 'raw' preserves existing output; 'envelope' wraps with meta."
+    ),
 });
 
 /** Inferred input type from Zod schema */
@@ -70,9 +77,15 @@ type ToolInput = z.infer<typeof toolSchema>;
 // Define the tool handler
 const toolHandler = async (args: Record<string, unknown>) => {
   const startTime = Date.now();
-  const input = (args as ToolInput).purchase;
+  const typedArgs = args as ToolInput;
+  const input = typedArgs.purchase;
+  const responseFormat = typedArgs.responseFormat;
 
-  logToolRequest(toolName, { ...input, lines: `[${input.lines?.length || 0} lines]` });
+  logToolRequest(toolName, {
+    ...input,
+    responseFormat,
+    lines: `[${input.lines?.length || 0} lines]`,
+  });
 
   try {
     // Check idempotency first
@@ -84,10 +97,16 @@ const toolHandler = async (args: Record<string, unknown>) => {
       });
 
       logToolResponse(toolName, true, Date.now() - startTime);
+
+      const payload = buildCreateToolPayload({
+        entityType: 'Purchase',
+        id: existingId,
+        wasIdempotent: true,
+        format: responseFormat,
+      });
+
       return {
-        content: [
-          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
-        ],
+        content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
       };
     }
 
@@ -131,8 +150,15 @@ const toolHandler = async (args: Record<string, unknown>) => {
     });
     logToolResponse(toolName, true, Date.now() - startTime);
 
+    const payload = buildCreateToolPayload({
+      entityType: 'Purchase',
+      entity: transformedResult,
+      wasIdempotent: false,
+      format: responseFormat,
+    });
+
     return {
-      content: [{ type: 'text' as const, text: JSON.stringify(transformedResult) }],
+      content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_purchase', error);

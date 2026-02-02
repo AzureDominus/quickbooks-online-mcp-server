@@ -3,6 +3,7 @@ import { ToolDefinition } from '../types/tool-definition.js';
 import { z } from 'zod';
 import { checkIdempotency, storeIdempotency } from '../helpers/idempotency.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
+import { buildCreateToolPayload } from '../helpers/create-tool-output.js';
 import { CreateEmployeeInputSchema } from '../types/qbo-schemas.js';
 
 // Define the tool metadata
@@ -20,11 +21,18 @@ const toolSchema = z.object({
     .string()
     .optional()
     .describe('Optional key to prevent duplicate employee creation on retry'),
+  responseFormat: z
+    .enum(['raw', 'envelope'])
+    .optional()
+    .describe(
+      "Optional output format. 'raw' preserves existing output; 'envelope' wraps with meta."
+    ),
 });
 
 // Define the tool handler
 const toolHandler = async (args: any) => {
   const startTime = Date.now();
+  const responseFormat = args.responseFormat as 'raw' | 'envelope' | undefined;
 
   logToolRequest(toolName, args);
 
@@ -38,10 +46,16 @@ const toolHandler = async (args: any) => {
       });
 
       logToolResponse(toolName, true, Date.now() - startTime);
+
+      const payload = buildCreateToolPayload({
+        entityType: 'Employee',
+        id: existingId,
+        wasIdempotent: true,
+        format: responseFormat,
+      });
+
       return {
-        content: [
-          { type: 'text' as const, text: JSON.stringify({ Id: existingId, wasIdempotent: true }) },
-        ],
+        content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
       };
     }
 
@@ -66,8 +80,15 @@ const toolHandler = async (args: any) => {
     });
     logToolResponse(toolName, true, Date.now() - startTime);
 
+    const payload = buildCreateToolPayload({
+      entityType: 'Employee',
+      entity: response.result,
+      wasIdempotent: false,
+      format: responseFormat,
+    });
+
     return {
-      content: [{ type: 'text' as const, text: JSON.stringify(response.result) }],
+      content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
     };
   } catch (error) {
     logger.error('Unexpected error in create_employee', error);
