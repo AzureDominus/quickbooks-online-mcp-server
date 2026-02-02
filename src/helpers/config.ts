@@ -21,6 +21,7 @@ if (process.env.QUICKBOOKS_DISABLE_DOTENV !== '1') {
 const DEFAULT_CONFIG_PATH = path.join(os.homedir(), '.config', 'quickbooks-mcp', 'config.json');
 const DEFAULT_SECRETS_PATH = path.join(os.homedir(), '.config', 'quickbooks-mcp', 'secrets.json');
 const DEFAULT_TOKEN_PATH = path.join(os.homedir(), '.config', 'quickbooks-mcp', 'tokens.json');
+const LEGACY_TOKEN_PATH = path.join(os.homedir(), '.config', 'quickbooks-mcp', 'tokens.json');
 
 export interface ResolvedQuickbooksConfig {
   profileName?: string;
@@ -106,6 +107,44 @@ function getProfileSecrets(
   return profiles[profileName] || {};
 }
 
+/**
+ * Migrate tokens from legacy single-file location to per-profile location.
+ * If the new per-profile token file doesn't exist but the legacy tokens.json does,
+ * copy the legacy file to the new per-profile path.
+ * Does NOT delete the legacy file.
+ */
+function migrateTokensIfNeeded(profileName: string, targetPath: string): void {
+  // Only migrate if target doesn't exist and legacy does
+  if (fs.existsSync(targetPath)) {
+    return;
+  }
+  if (!fs.existsSync(LEGACY_TOKEN_PATH)) {
+    return;
+  }
+
+  try {
+    // Ensure target directory exists
+    const targetDir = path.dirname(targetPath);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true, mode: 0o700 });
+    }
+
+    // Copy legacy tokens to new per-profile path
+    fs.copyFileSync(LEGACY_TOKEN_PATH, targetPath);
+    fs.chmodSync(targetPath, 0o600);
+
+    // Log migration (stdout only since logger may not be initialized yet)
+    console.error(
+      `[quickbooks-mcp] Migrated tokens from ${LEGACY_TOKEN_PATH} to ${targetPath} for profile "${profileName}"`
+    );
+  } catch (e) {
+    // Non-fatal: warn but continue
+    console.error(
+      `[quickbooks-mcp] Warning: Failed to migrate legacy tokens: ${e instanceof Error ? e.message : String(e)}`
+    );
+  }
+}
+
 function resolveTokenPath(profileName: string | undefined, profile: ProfileConfig): string {
   const envTokenPath = process.env.QUICKBOOKS_TOKEN_PATH;
   if (envTokenPath) {
@@ -115,7 +154,16 @@ function resolveTokenPath(profileName: string | undefined, profile: ProfileConfi
     return expandHome(profile.tokenPath);
   }
   if (profileName) {
-    return path.join(os.homedir(), '.config', 'quickbooks-mcp', 'tokens', `${profileName}.json`);
+    const perProfilePath = path.join(
+      os.homedir(),
+      '.config',
+      'quickbooks-mcp',
+      'tokens',
+      `${profileName}.json`
+    );
+    // Migrate from legacy path if needed
+    migrateTokensIfNeeded(profileName, perProfilePath);
+    return perProfilePath;
   }
   return DEFAULT_TOKEN_PATH;
 }
