@@ -6,12 +6,12 @@ This document tracks JSON output normalization issues for the QuickBooks MCP ser
 
 ## IMPORTANT: Build Requirement
 
-> **mcporter and the generated CLI run `dist/index.js`, and `dist/` is gitignored.**
+> **mcporter runs `dist/index.js`, and `dist/` is gitignored.**
 >
 > After switching branches or pulling new changes, you **MUST** either:
 >
 > 1. Run `npm run build` to compile TypeScript to `dist/`, **OR**
-> 2. Use the auto-build wrapper script: `bin/quickbooks-mcp` (if available)
+> 2. Use the auto-build wrapper script: `bin/quickbooks-mcp` (recommended)
 >
 > Without this step, you will be running stale code from a previous build!
 
@@ -133,14 +133,6 @@ All commands should:
 - Exit with status 0
 - Output valid JSON that jq can parse
 - Return objects with expected structure (`{count, <entities>}` or `{count}`)
-
-### 4. Verify with generated CLI (optional)
-
-```bash
-cd /path/to/workspace
-mcporter generate-cli --server QuickBooks --output ./generated/QuickBooks.ts --bundle ./bin/quickbooks
-./bin/quickbooks -o json search-vendors --limit 3 | jq .
-```
 
 ---
 

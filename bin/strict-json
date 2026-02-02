@@ -17,8 +17,7 @@
 #
 # Examples:
 #   bin/strict-json mcporter call QuickBooks.health_check --output json | jq .
-#   bin/strict-json mcporter call QuickBooks.search_customers limit=foo --output json | jq .
-#   bin/strict-json ./bin/quickbooks -o json search-customers --limit 3 | jq .
+#   bin/strict-json mcporter call QuickBooks.search_customers limit:3 --output json | jq .
 
 set -euo pipefail
 
