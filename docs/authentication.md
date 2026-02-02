@@ -38,11 +38,11 @@ QuickBooks Online uses OAuth 2.0 for secure API access. Here's how the flow work
 
 ### Token Types
 
-| Token | Purpose | Lifetime |
-|-------|---------|----------|
-| Access Token | Authenticate API requests | ~1 hour |
-| Refresh Token | Obtain new access tokens | 100 days |
-| Realm ID | Identify the QuickBooks company | Permanent |
+| Token         | Purpose                         | Lifetime  |
+| ------------- | ------------------------------- | --------- |
+| Access Token  | Authenticate API requests       | ~1 hour   |
+| Refresh Token | Obtain new access tokens        | 100 days  |
+| Realm ID      | Identify the QuickBooks company | Permanent |
 
 ## Setting Up Your Intuit Developer App
 
@@ -72,10 +72,10 @@ QuickBooks Online uses OAuth 2.0 for secure API access. Here's how the flow work
 
 ### Step 4: Choose Your Environment
 
-| Environment | Use Case | Data |
-|-------------|----------|------|
-| Sandbox | Development and testing | Fake test data |
-| Production | Live integration | Real customer data |
+| Environment | Use Case                | Data               |
+| ----------- | ----------------------- | ------------------ |
+| Sandbox     | Development and testing | Fake test data     |
+| Production  | Live integration        | Real customer data |
 
 Start with **Sandbox** for development. Switch to **Production** when ready to go live.
 
@@ -100,6 +100,7 @@ QUICKBOOKS_OAUTH_PORT=9000
 ```
 
 Then add the corresponding redirect URI in Intuit:
+
 ```
 http://localhost:9000/callback
 ```
@@ -107,6 +108,7 @@ http://localhost:9000/callback
 ### Production Redirect URIs
 
 For production deployments, you may need HTTPS redirect URIs:
+
 ```
 https://your-domain.com/oauth/callback
 ```
@@ -131,6 +133,15 @@ If you already have tokens (e.g., from a previous OAuth flow):
 ```env
 QUICKBOOKS_REFRESH_TOKEN=AB11...long-token...
 QUICKBOOKS_REALM_ID=1234567890
+```
+
+### Optional: Profile-based config
+
+You can store non-secrets in `~/.config/quickbooks-mcp/config.json` and secrets in
+`~/.config/quickbooks-mcp/secrets.json`, then select a profile with:
+
+```env
+QUICKBOOKS_PROFILE=sandbox-test
 ```
 
 ### Optional: Custom OAuth Port
@@ -177,6 +188,7 @@ rm ~/.config/quickbooks-mcp/tokens.json
 ### Default Storage Location
 
 Tokens are stored at:
+
 ```
 ~/.config/quickbooks-mcp/tokens.json
 ```
@@ -213,6 +225,7 @@ QUICKBOOKS_TOKEN_PATH=/custom/path/tokens.json
 **Cause**: Client ID or Secret is incorrect.
 
 **Solution**:
+
 1. Verify `QUICKBOOKS_CLIENT_ID` matches your Intuit app
 2. Verify `QUICKBOOKS_CLIENT_SECRET` matches your Intuit app
 3. Ensure you're using the correct environment (sandbox vs production)
@@ -222,6 +235,7 @@ QUICKBOOKS_TOKEN_PATH=/custom/path/tokens.json
 **Cause**: Redirect URI mismatch.
 
 **Solution**:
+
 1. Check your Intuit app's redirect URIs
 2. Ensure `http://localhost:8765/callback` is listed
 3. If using a custom port, ensure the URI matches
@@ -231,6 +245,7 @@ QUICKBOOKS_TOKEN_PATH=/custom/path/tokens.json
 **Cause**: Refresh token hasn't been used in 100 days.
 
 **Solution**:
+
 1. Delete stored tokens: `rm ~/.config/quickbooks-mcp/tokens.json`
 2. Restart the MCP server
 3. Complete OAuth flow again
@@ -240,6 +255,7 @@ QUICKBOOKS_TOKEN_PATH=/custom/path/tokens.json
 **Cause**: Browser or firewall issue.
 
 **Solution**:
+
 1. Check firewall isn't blocking the OAuth port
 2. Try a different port with `QUICKBOOKS_OAUTH_PORT`
 3. Manually open the OAuth URL printed in logs
@@ -249,6 +265,7 @@ QUICKBOOKS_TOKEN_PATH=/custom/path/tokens.json
 **Cause**: User denied authorization or app lacks required scopes.
 
 **Solution**:
+
 1. Ensure you authorize all requested permissions
 2. Check app scopes in Intuit Developer Portal
 
@@ -257,6 +274,7 @@ QUICKBOOKS_TOKEN_PATH=/custom/path/tokens.json
 **Cause**: File permission or path issue.
 
 **Solution**:
+
 1. Check write permissions on the token directory
 2. Try a different path with `QUICKBOOKS_TOKEN_PATH`
 3. Ensure the parent directory exists

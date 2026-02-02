@@ -1,32 +1,28 @@
 import crypto from 'crypto';
-import dotenv from 'dotenv';
 import QuickBooks from 'node-quickbooks';
 import OAuthClient from 'intuit-oauth';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import open from 'open';
-import os from 'os';
 import { logger } from '../helpers/logger.js';
 import { withRetry, withCallbackRetry, RetryOptions } from '../helpers/retry.js';
 import { encrypt, decrypt, isEncrypted } from '../helpers/encryption.js';
 import { qboCircuitBreaker } from '../helpers/circuit-breaker.js';
+import { loadQuickbooksConfig } from '../helpers/config.js';
 
-dotenv.config();
-
-const client_id = process.env.QUICKBOOKS_CLIENT_ID;
-const client_secret = process.env.QUICKBOOKS_CLIENT_SECRET;
-const environment = process.env.QUICKBOOKS_ENVIRONMENT || 'sandbox';
-const oauth_port = parseInt(process.env.QUICKBOOKS_OAUTH_PORT || '8765', 10);
-const redirect_uri = `http://localhost:${oauth_port}/callback`;
+const resolvedConfig = loadQuickbooksConfig();
+const client_id = resolvedConfig.clientId;
+const client_secret = resolvedConfig.clientSecret;
+const environment = resolvedConfig.environment;
+const oauth_port = resolvedConfig.oauthPort;
+const redirect_uri = resolvedConfig.redirectUri;
 
 // Request timeout configuration
-const QUICKBOOKS_TIMEOUT_MS = parseInt(process.env.QUICKBOOKS_TIMEOUT_MS || '30000', 10);
+const QUICKBOOKS_TIMEOUT_MS = resolvedConfig.timeoutMs;
 
-// Token storage path - configurable via env var, defaults to ~/.config/quickbooks-mcp/tokens.json
-const TOKEN_STORAGE_PATH =
-  process.env.QUICKBOOKS_TOKEN_PATH ||
-  path.join(os.homedir(), '.config', 'quickbooks-mcp', 'tokens.json');
+// Token storage path
+const TOKEN_STORAGE_PATH = resolvedConfig.tokenPath;
 
 interface StoredTokens {
   refresh_token: string;
@@ -85,8 +81,8 @@ function saveTokens(tokens: StoredTokens): void {
 
 // Load stored tokens, fall back to env vars
 const storedTokens = loadStoredTokens();
-const refresh_token = storedTokens?.refresh_token || process.env.QUICKBOOKS_REFRESH_TOKEN;
-const realm_id = storedTokens?.realm_id || process.env.QUICKBOOKS_REALM_ID;
+const refresh_token = storedTokens?.refresh_token || resolvedConfig.refreshToken;
+const realm_id = storedTokens?.realm_id || resolvedConfig.realmId;
 
 // Only throw error if client_id or client_secret is missing
 if (!client_id || !client_secret || !redirect_uri) {

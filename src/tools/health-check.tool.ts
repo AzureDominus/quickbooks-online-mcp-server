@@ -3,6 +3,7 @@ import { qboCircuitBreaker } from '../helpers/circuit-breaker.js';
 import { ToolDefinition } from '../types/tool-definition.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 import { z } from 'zod';
+import { loadQuickbooksConfig } from '../helpers/config.js';
 
 const toolName = 'health_check';
 const toolDescription =
@@ -39,6 +40,7 @@ const toolHandler = async (_args: Record<string, unknown>) => {
   logToolRequest('health_check', {});
   const startTime = Date.now();
 
+  const resolvedConfig = loadQuickbooksConfig();
   const result: HealthCheckResult = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -53,8 +55,8 @@ const toolHandler = async (_args: Record<string, unknown>) => {
       },
       api: { status: 'error', message: 'Not checked' },
     },
-    environment: process.env.QUICKBOOKS_ENVIRONMENT || 'sandbox',
-    timeoutMs: parseInt(process.env.QUICKBOOKS_TIMEOUT_MS || '30000', 10),
+    environment: resolvedConfig.environment,
+    timeoutMs: resolvedConfig.timeoutMs,
   };
 
   try {

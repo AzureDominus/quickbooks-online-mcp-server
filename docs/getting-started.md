@@ -17,11 +17,11 @@ Before you begin, ensure you have the following:
 
 ### Required Software
 
-| Software | Version | Purpose |
-|----------|---------|---------|
-| Node.js | 18.x or higher | Runtime environment |
-| npm | 9.x or higher | Package manager |
-| Git | Any recent version | Version control |
+| Software | Version            | Purpose             |
+| -------- | ------------------ | ------------------- |
+| Node.js  | 18.x or higher     | Runtime environment |
+| npm      | 9.x or higher      | Package manager     |
+| Git      | Any recent version | Version control     |
 
 ### QuickBooks Developer Account
 
@@ -109,6 +109,19 @@ QUICKBOOKS_REFRESH_TOKEN=your_refresh_token_here
 QUICKBOOKS_REALM_ID=your_realm_id_here
 ```
 
+### Profile-based config (optional)
+
+Instead of a `.env`, you can use profile files and switch with `QUICKBOOKS_PROFILE`:
+
+```env
+QUICKBOOKS_PROFILE=sandbox-test
+QUICKBOOKS_CONFIG_PATH=~/.config/quickbooks-mcp/config.json
+QUICKBOOKS_SECRETS_PATH=~/.config/quickbooks-mcp/secrets.json
+```
+
+See `config/quickbooks-mcp.config.example.json` and
+`config/quickbooks-mcp.secrets.example.json` for templates.
+
 ## Verifying Connection
 
 After setup, verify the connection works by testing a simple search:
@@ -154,12 +167,12 @@ Then ask Claude: "List my QuickBooks accounts"
 
 If you encounter issues:
 
-| Problem | Solution |
-|---------|----------|
-| "QuickBooks not connected" | Check your `.env` file has all required variables |
-| OAuth window doesn't open | Check firewall settings, try a different port |
-| "Invalid client" error | Verify Client ID/Secret match your Intuit app |
-| "Invalid redirect URI" | Ensure `http://localhost:8765/callback` is in your app settings |
+| Problem                    | Solution                                                        |
+| -------------------------- | --------------------------------------------------------------- |
+| "QuickBooks not connected" | Check your `.env` file has all required variables               |
+| OAuth window doesn't open  | Check firewall settings, try a different port                   |
+| "Invalid client" error     | Verify Client ID/Secret match your Intuit app                   |
+| "Invalid redirect URI"     | Ensure `http://localhost:8765/callback` is in your app settings |
 
 See the full [Troubleshooting Guide](troubleshooting.md) for more solutions.
 

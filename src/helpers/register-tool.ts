@@ -1,6 +1,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ToolDefinition } from '../types/tool-definition.js';
 import { z } from 'zod';
+import { checkWriteGuard } from './write-guard.js';
+
+const mutatingPrefixes = ['create_', 'update_', 'delete_', 'upload_'];
+
+function isMutatingTool(toolName: string): boolean {
+  return mutatingPrefixes.some((prefix) => toolName.startsWith(prefix));
+}
 
 export function RegisterTool<T extends z.ZodType<any, any>>(
   server: McpServer,
@@ -16,5 +23,37 @@ export function RegisterTool<T extends z.ZodType<any, any>>(
       ? (schema as z.ZodObject<z.ZodRawShape>).shape
       : { input: schema };
 
-  server.tool(toolDefinition.name, toolDefinition.description, rawShape, toolDefinition.handler);
+  const handler = toolDefinition.handler as (
+    args: Record<string, unknown>,
+    extra?: unknown
+  ) => Promise<unknown> | unknown;
+  const wrappedHandler = async (args: Record<string, unknown>, extra?: unknown) => {
+    if (isMutatingTool(toolDefinition.name)) {
+      const guard = checkWriteGuard();
+      if (!guard.allowed) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                isError: true,
+                error: guard.reason,
+                environment: guard.environment,
+                profileName: guard.profileName,
+              }),
+            },
+          ],
+        };
+      }
+    }
+
+    return handler(args, extra);
+  };
+
+  server.tool(
+    toolDefinition.name,
+    toolDefinition.description,
+    rawShape,
+    wrappedHandler as typeof toolDefinition.handler
+  );
 }

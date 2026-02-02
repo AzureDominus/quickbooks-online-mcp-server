@@ -1,0 +1,27 @@
+{
+  "defaultProfile": "sandbox-test",
+  "profiles": {
+    "sandbox-test": {
+      "environment": "sandbox",
+      "realmId": "1234567890123456",
+      "companyName": "Testing Sandbox Company",
+      "oauthPort": 8765,
+      "tokenPath": "~/.config/quickbooks-mcp/tokens/sandbox-test.json",
+      "idempotencyStoragePath": "~/.config/quickbooks-mcp/idempotency/sandbox-test.json",
+      "timeoutMs": 30000,
+      "logLevel": "INFO",
+      "allowProductionWrites": false
+    },
+    "production-main": {
+      "environment": "production",
+      "realmId": "9999999999999999",
+      "companyName": "Production Main Company",
+      "oauthPort": 8765,
+      "tokenPath": "~/.config/quickbooks-mcp/tokens/production-main.json",
+      "idempotencyStoragePath": "~/.config/quickbooks-mcp/idempotency/production-main.json",
+      "timeoutMs": 30000,
+      "logLevel": "INFO",
+      "allowProductionWrites": false
+    }
+  }
+}
