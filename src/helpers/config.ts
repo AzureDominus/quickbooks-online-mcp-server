@@ -11,7 +11,12 @@ import {
   SecretsFileSchema,
 } from '../types/schemas/config.schema.js';
 
-dotenv.config();
+// In normal usage we load .env from the current working directory.
+// Tests should be deterministic and must not implicitly depend on a developer's
+// local .env file, so the test suite can set QUICKBOOKS_DISABLE_DOTENV=1.
+if (process.env.QUICKBOOKS_DISABLE_DOTENV !== '1') {
+  dotenv.config();
+}
 
 const DEFAULT_CONFIG_PATH = path.join(os.homedir(), '.config', 'quickbooks-mcp', 'config.json');
 const DEFAULT_SECRETS_PATH = path.join(os.homedir(), '.config', 'quickbooks-mcp', 'secrets.json');

@@ -1,0 +1,10 @@
+{
+  "defaultProfile": "test-sandbox",
+  "profiles": {
+    "test-sandbox": {
+      "environment": "sandbox",
+      "companyName": "QBO MCP Test Sandbox",
+      "logLevel": "ERROR"
+    }
+  }
+}

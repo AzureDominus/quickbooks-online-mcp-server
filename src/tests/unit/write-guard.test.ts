@@ -39,6 +39,9 @@ describe('write guard', () => {
     });
 
     process.env.QUICKBOOKS_CONFIG_PATH = configPath;
+    process.env.QUICKBOOKS_PROFILE = 'production-main';
+    // This test validates profile-config-driven environment selection.
+    delete process.env.QUICKBOOKS_ENVIRONMENT;
 
     const guard = checkWriteGuard();
     assert.equal(guard.allowed, false);
@@ -62,6 +65,9 @@ describe('write guard', () => {
     });
 
     process.env.QUICKBOOKS_CONFIG_PATH = configPath;
+    process.env.QUICKBOOKS_PROFILE = 'production-main';
+    // This test validates profile-config-driven environment selection.
+    delete process.env.QUICKBOOKS_ENVIRONMENT;
     process.env.QUICKBOOKS_ALLOW_PRODUCTION_WRITES = '1';
 
     const guard = checkWriteGuard();

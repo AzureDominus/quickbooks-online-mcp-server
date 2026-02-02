@@ -50,6 +50,7 @@ describe('config loader', () => {
 
     process.env.QUICKBOOKS_CONFIG_PATH = configPath;
     process.env.QUICKBOOKS_SECRETS_PATH = secretsPath;
+    process.env.QUICKBOOKS_PROFILE = 'sandbox-test';
     process.env.QUICKBOOKS_CLIENT_ID = 'env-client-id';
 
     const config = loadQuickbooksConfig();
