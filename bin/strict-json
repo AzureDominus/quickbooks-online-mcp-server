@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# bin/strict-json - Run a command and enforce strict JSON on stdout.
+#
+# Why this exists:
+# - Some tooling (notably mcporter with --output json on validation errors) can emit
+#   non-JSON text to stdout and still exit 0, which breaks automation.
+#
+# This wrapper:
+# - Captures stdout/stderr
+# - Verifies stdout is valid JSON
+# - Passes JSON through unchanged on success
+# - Exits non-zero when stdout is not JSON
+# - Also exits non-zero if the parsed JSON contains {"isError": true}
+#
+# Usage:
+#   bin/strict-json <command> [args...]
+#
+# Examples:
+#   bin/strict-json mcporter call QuickBooks.health_check --output json | jq .
+#   bin/strict-json mcporter call QuickBooks.search_customers limit=foo --output json | jq .
+#   bin/strict-json ./bin/quickbooks -o json search-customers --limit 3 | jq .
+
+set -euo pipefail
+
+if [ "$#" -lt 1 ]; then
+  echo "Usage: bin/strict-json <command> [args...]" >&2
+  exit 2
+fi
+
+TMP_OUT="$(mktemp)"
+TMP_ERR="$(mktemp)"
+cleanup() {
+  rm -f "$TMP_OUT" "$TMP_ERR"
+}
+trap cleanup EXIT
+
+set +e
+"$@" >"$TMP_OUT" 2>"$TMP_ERR"
+RC=$?
+set -e
+
+# Forward stderr (if any) unchanged.
+if [ -s "$TMP_ERR" ]; then
+  cat "$TMP_ERR" >&2
+fi
+
+# Validate JSON on stdout.
+if node -e 'const fs=require("fs"); const s=fs.readFileSync(0,"utf8"); JSON.parse(s);' <"$TMP_OUT" 2>/dev/null; then
+  cat "$TMP_OUT"
+
+  # If the JSON payload includes isError:true, treat it as failure even if RC==0.
+  if node -e 'const fs=require("fs"); const v=JSON.parse(fs.readFileSync(0,"utf8")); process.exit(v && v.isError === true ? 1 : 0);' <"$TMP_OUT"; then
+    # Parsed JSON is not an error payload.
+    if [ "$RC" -ne 0 ]; then
+      exit "$RC"
+    fi
+    exit 0
+  else
+    # JSON parsed but indicates an error payload.
+    exit 1
+  fi
+else
+  # Not valid JSON. Emit a strict JSON error wrapper to stdout.
+  echo "strict-json: command produced non-JSON stdout (see stderr above)." >&2
+  if [ -s "$TMP_OUT" ]; then
+    cat "$TMP_OUT" >&2
+  fi
+
+  printf '{"isError":true,"error":"strict-json: stdout was not valid JSON","wrappedExitCode":%d}\n' "$RC"
+  exit 1
+fi
