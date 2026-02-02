@@ -11,6 +11,24 @@
 import { z } from 'zod';
 
 // =============================================================================
+// Identifier coercion (mcporter-friendly)
+// =============================================================================
+
+const finiteNumberToString = (val: unknown) =>
+  typeof val === 'number' && Number.isFinite(val) ? String(val) : val;
+
+/**
+ * Accepts either string or number input and returns a string.
+ *
+ * Use for identifier-like fields (entity IDs, reference.value, etc.).
+ * Do NOT use for amounts.
+ */
+export const QboIdSchema = z.preprocess(finiteNumberToString, z.string());
+
+/** Same as QboIdSchema, but enforces non-empty strings. */
+export const QboIdRequiredSchema = z.preprocess(finiteNumberToString, z.string().min(1));
+
+// =============================================================================
 // Common Reference Types
 // =============================================================================
 
@@ -20,7 +38,7 @@ import { z } from 'zod';
  */
 export const ReferenceSchema = z.object({
   /** The ID of the referenced entity (required) */
-  value: z.string().describe('The ID of the referenced entity'),
+  value: QboIdSchema.describe('The ID of the referenced entity'),
   /** Display name of the entity (optional, for readability) */
   name: z.string().optional().describe('Display name of the referenced entity'),
 });
@@ -271,22 +289,22 @@ export type GenericSearchInput = z.infer<typeof GenericSearchInputSchema>;
 
 export const GetByIdInputSchema = z.object({
   /** Entity ID */
-  id: z.string().min(1).describe('Entity ID'),
+  id: QboIdRequiredSchema.describe('Entity ID'),
 });
 
 export const DeleteInputSchema = z.object({
   /** Entity ID */
-  Id: z.string().min(1).describe('Entity ID'),
+  Id: QboIdRequiredSchema.describe('Entity ID'),
   /** Sync token */
   SyncToken: z.string().describe('Entity sync token'),
 });
 
 // For entities that use the idOrEntity pattern
 export const DeleteByIdOrEntitySchema = z.union([
-  z.string().describe('Entity ID to delete'),
+  QboIdSchema.describe('Entity ID to delete'),
   z
     .object({
-      Id: z.string(),
+      Id: QboIdSchema,
       SyncToken: z.string(),
     })
     .describe('Entity object with Id and SyncToken'),
@@ -321,7 +339,7 @@ export const UploadAttachmentInputSchema = z.object({
   /** Entity type to attach to */
   entityType: AttachableEntityTypeEnum.describe('Type of entity to attach to'),
   /** Entity ID to attach to */
-  entityId: z.string().min(1).describe('ID of the entity to attach to'),
+  entityId: QboIdRequiredSchema.describe('ID of the entity to attach to'),
   /** Optional note for the attachment */
   note: z.string().max(2000).optional().describe('Note for this attachment'),
 });
@@ -332,12 +350,12 @@ export const GetAttachmentsInputSchema = z.object({
   /** Entity type */
   entityType: AttachableEntityTypeEnum.describe('Type of entity'),
   /** Entity ID */
-  entityId: z.string().min(1).describe('ID of the entity'),
+  entityId: QboIdRequiredSchema.describe('ID of the entity'),
 });
 
 export const DownloadAttachmentInputSchema = z.object({
   /** Attachment ID */
-  attachmentId: z.string().min(1).describe('ID of the attachment to download'),
+  attachmentId: QboIdRequiredSchema.describe('ID of the attachment to download'),
   /** Destination path */
   destinationPath: z
     .string()

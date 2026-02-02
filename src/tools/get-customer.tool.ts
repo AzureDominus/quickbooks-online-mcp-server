@@ -2,10 +2,11 @@ import { getQuickbooksCustomer } from '../handlers/get-quickbooks-customer.handl
 import { ToolDefinition } from '../types/tool-definition.js';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 import { z } from 'zod';
+import { QboIdSchema } from '../types/schemas/common.schema.js';
 
 const toolName = 'get_customer';
 const toolDescription = 'Get a customer by Id from QuickBooks Online.';
-const toolSchema = z.object({ id: z.string() });
+const toolSchema = z.object({ id: QboIdSchema });
 
 /** Inferred input type from Zod schema */
 type ToolInput = z.infer<typeof toolSchema>;

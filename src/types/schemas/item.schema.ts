@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { ReferenceSchema, SearchFilterSchema } from './common.schema.js';
+import { ReferenceSchema, SearchFilterSchema, QboIdRequiredSchema } from './common.schema.js';
 
 // =============================================================================
 // Create/Update Schemas
@@ -46,7 +46,7 @@ export type CreateItemInput = z.infer<typeof CreateItemInputSchema>;
  */
 export const UpdateItemInputSchema = CreateItemInputSchema.extend({
   /** Item ID (required for update) */
-  Id: z.string().min(1).describe('Item ID (required)'),
+  Id: QboIdRequiredSchema.describe('Item ID (required)'),
   /** Sync token for optimistic locking (required for update) */
   SyncToken: z.string().describe('Sync token for optimistic locking (required)'),
 })

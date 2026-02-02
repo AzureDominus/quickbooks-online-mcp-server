@@ -5,7 +5,12 @@
  */
 
 import { z } from 'zod';
-import { ReferenceSchema, AccountTypeEnum, SearchFilterSchema } from './common.schema.js';
+import {
+  ReferenceSchema,
+  AccountTypeEnum,
+  SearchFilterSchema,
+  QboIdRequiredSchema,
+} from './common.schema.js';
 
 // =============================================================================
 // Create/Update Schemas
@@ -49,7 +54,7 @@ export type CreateAccountInput = z.infer<typeof CreateAccountInputSchema>;
  */
 export const UpdateAccountInputSchema = CreateAccountInputSchema.extend({
   /** Account ID (required for update) */
-  Id: z.string().min(1).describe('Account ID (required)'),
+  Id: QboIdRequiredSchema.describe('Account ID (required)'),
   /** Sync token for optimistic locking (required for update) */
   SyncToken: z.string().describe('Sync token for optimistic locking (required)'),
 })

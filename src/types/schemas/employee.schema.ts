@@ -10,6 +10,7 @@ import {
   PhoneNumberSchema,
   PhysicalAddressSchema,
   SearchFilterSchema,
+  QboIdSchema,
 } from './common.schema.js';
 
 // =============================================================================
@@ -67,7 +68,7 @@ export type CreateEmployeeInput = z.infer<typeof CreateEmployeeInputSchema>;
 
 export const UpdateEmployeeInputSchema = CreateEmployeeInputSchema.extend({
   /** Employee ID (required for update) */
-  Id: z.string().describe('Employee ID (required)'),
+  Id: QboIdSchema.describe('Employee ID (required)'),
   /** Sync token (required for update) */
   SyncToken: z.string().describe('Sync token (required)'),
 })

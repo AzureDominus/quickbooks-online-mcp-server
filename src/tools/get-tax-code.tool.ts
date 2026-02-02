@@ -1,5 +1,6 @@
 import { getTaxCode } from '../handlers/tax-code.handler.js';
 import { ToolDefinition } from '../types/tool-definition.js';
+import { QboIdSchema } from '../types/schemas/common.schema.js';
 import { z } from 'zod';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
@@ -8,7 +9,7 @@ const toolDescription =
   "Get a tax code by ID from QuickBooks Online. Returns the tax code details including name, description, rates, and whether it's taxable.";
 
 const toolSchema = z.object({
-  id: z.string().describe('The ID of the tax code to retrieve'),
+  id: QboIdSchema.describe('The ID of the tax code to retrieve'),
 });
 
 const toolHandler = async (args: { [x: string]: any }) => {

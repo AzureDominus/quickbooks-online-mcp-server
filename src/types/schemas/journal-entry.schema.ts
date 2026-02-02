@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { ReferenceSchema, SearchFilterSchema } from './common.schema.js';
+import { ReferenceSchema, SearchFilterSchema, QboIdRequiredSchema } from './common.schema.js';
 
 // =============================================================================
 // Line Item Schema
@@ -63,7 +63,7 @@ export type CreateJournalEntryInput = z.infer<typeof CreateJournalEntryInputSche
 
 export const UpdateJournalEntryInputSchema = z.object({
   /** Journal Entry ID (required for update) */
-  Id: z.string().min(1).describe('Journal entry ID (required)'),
+  Id: QboIdRequiredSchema.describe('Journal entry ID (required)'),
   /** Sync token for optimistic locking (required for update) */
   SyncToken: z.string().describe('Sync token for optimistic locking (required)'),
   /** Line items (optional for update - replaces all lines if provided) */

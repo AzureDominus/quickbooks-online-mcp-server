@@ -1,5 +1,6 @@
 import { updateQuickbooksBill } from '../handlers/update-quickbooks-bill.handler.js';
 import { ToolDefinition } from '../types/tool-definition.js';
+import { QboIdSchema } from '../types/schemas/common.schema.js';
 import { z } from 'zod';
 import { logger, logToolRequest, logToolResponse } from '../helpers/logger.js';
 
@@ -41,13 +42,13 @@ const BillLineSchema = z.object({
     .object({
       AccountRef: z
         .object({
-          value: z.string().describe('Account ID'),
+          value: QboIdSchema.describe('Account ID'),
           name: z.string().optional().describe('Account name'),
         })
         .describe('Account reference'),
       TaxCodeRef: z
         .object({
-          value: z.string().describe('Tax code ID'),
+          value: QboIdSchema.describe('Tax code ID'),
         })
         .optional()
         .describe('Tax code reference'),
@@ -58,7 +59,7 @@ const BillLineSchema = z.object({
     .object({
       ItemRef: z
         .object({
-          value: z.string().describe('Item ID'),
+          value: QboIdSchema.describe('Item ID'),
           name: z.string().optional().describe('Item name'),
         })
         .describe('Item reference'),
@@ -71,11 +72,11 @@ const BillLineSchema = z.object({
 
 // Update bill input schema with required SyncToken
 const UpdateBillInputSchema = z.object({
-  Id: z.string().describe('Bill ID to update (required)'),
+  Id: QboIdSchema.describe('Bill ID to update (required)'),
   SyncToken: z.string().describe('Sync token for optimistic locking (required)'),
   VendorRef: z
     .object({
-      value: z.string().describe('Vendor ID'),
+      value: QboIdSchema.describe('Vendor ID'),
       name: z.string().optional().describe('Vendor name'),
     })
     .optional()

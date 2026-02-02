@@ -11,6 +11,7 @@ import {
   PhysicalAddressSchema,
   GlobalTaxCalculationEnum,
   SearchFilterSchema,
+  QboIdSchema,
 } from './common.schema.js';
 
 // =============================================================================
@@ -88,7 +89,7 @@ export type CreateEstimateInput = z.infer<typeof CreateEstimateInputSchema>;
 
 export const UpdateEstimateInputSchema = CreateEstimateInputSchema.extend({
   /** Estimate ID (required for update) */
-  Id: z.string().describe('Estimate ID (required)'),
+  Id: QboIdSchema.describe('Estimate ID (required)'),
   /** Sync token (required for update) */
   SyncToken: z.string().describe('Sync token (required)'),
 })
@@ -138,7 +139,7 @@ export const SearchEstimatesInputSchema = z.object({
 
   // Entity filters
   /** Customer ID */
-  customerId: z.string().optional().describe('Filter by customer ID'),
+  customerId: QboIdSchema.optional().describe('Filter by customer ID'),
 
   // Status filter
   /** Estimate status */
