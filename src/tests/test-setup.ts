@@ -26,9 +26,6 @@ process.env.QUICKBOOKS_ENVIRONMENT = process.env.QUICKBOOKS_ENVIRONMENT || 'sand
 
 // Default: never allow production writes during tests.
 // (Our write guard requires BOTH config flag + env flag. Keep env flag off.)
-if (process.env.QUICKBOOKS_ALLOW_PRODUCTION_WRITES) {
-  delete process.env.QUICKBOOKS_ALLOW_PRODUCTION_WRITES;
-}
 
 // ---------------------------------------------------------------------------
 // Prevent tests from reading/writing real user config or tokens.

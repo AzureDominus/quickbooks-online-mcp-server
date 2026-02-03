@@ -78,6 +78,13 @@ import { SearchTaxCodesTool } from './tools/search-tax-codes.tool.js';
 // Health check tool
 import { HealthCheckTool } from './tools/health-check.tool.js';
 import { GetCurrentConfigTool } from './tools/get-current-config.tool.js';
+import { OauthStartTool } from './tools/oauth-start.tool.js';
+import { OauthCompleteTool } from './tools/oauth-complete.tool.js';
+import { ListProfilesTool } from './tools/list-profiles.tool.js';
+import { CreateProfileTool } from './tools/create-profile.tool.js';
+import { SetProfileTool } from './tools/set-profile.tool.js';
+import { LogoutTool } from './tools/logout.tool.js';
+import { GetCompanyInfoTool } from './tools/get-company-info.tool.js';
 
 const main = async () => {
   // Create an MCP server
@@ -180,6 +187,13 @@ const main = async () => {
   // Add health check tool
   RegisterTool(server, HealthCheckTool);
   RegisterTool(server, GetCurrentConfigTool);
+  RegisterTool(server, OauthStartTool);
+  RegisterTool(server, OauthCompleteTool);
+  RegisterTool(server, ListProfilesTool);
+  RegisterTool(server, CreateProfileTool);
+  RegisterTool(server, SetProfileTool);
+  RegisterTool(server, LogoutTool);
+  RegisterTool(server, GetCompanyInfoTool);
 
   // Start receiving messages on stdin and sending messages on stdout
   const transport = new StdioServerTransport();

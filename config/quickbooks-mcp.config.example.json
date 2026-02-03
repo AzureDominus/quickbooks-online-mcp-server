@@ -10,7 +10,8 @@
       "idempotencyStoragePath": "~/.config/quickbooks-mcp/idempotency/sandbox-test.json",
       "timeoutMs": 30000,
       "logLevel": "INFO",
-      "allowProductionWrites": false
+      "allowProductionCreates": false,
+      "allowProductionDeletes": false
     },
     "production-main": {
       "environment": "production",
@@ -21,7 +22,8 @@
       "idempotencyStoragePath": "~/.config/quickbooks-mcp/idempotency/production-main.json",
       "timeoutMs": 30000,
       "logLevel": "INFO",
-      "allowProductionWrites": false
+      "allowProductionCreates": false,
+      "allowProductionDeletes": false
     }
   }
 }

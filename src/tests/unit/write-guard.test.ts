@@ -24,7 +24,32 @@ describe('write guard', () => {
     resetQuickbooksConfigCache();
   });
 
-  it('blocks production writes without explicit allow flag', () => {
+  it('allows non-production operations by default', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-guard-'));
+    const configPath = path.join(tmpDir, 'config.json');
+
+    writeJson(configPath, {
+      defaultProfile: 'sandbox-main',
+      profiles: {
+        'sandbox-main': {
+          environment: 'sandbox',
+        },
+      },
+    });
+
+    process.env.QUICKBOOKS_CONFIG_PATH = configPath;
+    process.env.QUICKBOOKS_PROFILE = 'sandbox-main';
+    delete process.env.QUICKBOOKS_ENVIRONMENT;
+
+    const createGuard = checkWriteGuard('create');
+    const deleteGuard = checkWriteGuard('delete');
+    assert.equal(createGuard.allowed, true);
+    assert.equal(deleteGuard.allowed, true);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('blocks production creates without allow flag', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-guard-'));
     const configPath = path.join(tmpDir, 'config.json');
 
@@ -33,24 +58,23 @@ describe('write guard', () => {
       profiles: {
         'production-main': {
           environment: 'production',
-          allowProductionWrites: true,
+          allowProductionCreates: true,
         },
       },
     });
 
     process.env.QUICKBOOKS_CONFIG_PATH = configPath;
     process.env.QUICKBOOKS_PROFILE = 'production-main';
-    // This test validates profile-config-driven environment selection.
     delete process.env.QUICKBOOKS_ENVIRONMENT;
 
-    const guard = checkWriteGuard();
+    const guard = checkWriteGuard('create');
     assert.equal(guard.allowed, false);
     assert.equal(guard.environment, 'production');
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('allows production writes only with profile and env flag', () => {
+  it('allows production creates with profile flag', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-guard-'));
     const configPath = path.join(tmpDir, 'config.json');
 
@@ -59,21 +83,69 @@ describe('write guard', () => {
       profiles: {
         'production-main': {
           environment: 'production',
-          allowProductionWrites: true,
+          allowProductionCreates: true,
         },
       },
     });
 
     process.env.QUICKBOOKS_CONFIG_PATH = configPath;
     process.env.QUICKBOOKS_PROFILE = 'production-main';
-    // This test validates profile-config-driven environment selection.
     delete process.env.QUICKBOOKS_ENVIRONMENT;
-    process.env.QUICKBOOKS_ALLOW_PRODUCTION_WRITES = '1';
-
-    const guard = checkWriteGuard();
+    const guard = checkWriteGuard('create');
     assert.equal(guard.allowed, true);
     assert.equal(guard.environment, 'production');
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
+
+  it('blocks production deletes without allow flag', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-guard-'));
+    const configPath = path.join(tmpDir, 'config.json');
+
+    writeJson(configPath, {
+      defaultProfile: 'production-main',
+      profiles: {
+        'production-main': {
+          environment: 'production',
+          allowProductionDeletes: true,
+        },
+      },
+    });
+
+    process.env.QUICKBOOKS_CONFIG_PATH = configPath;
+    process.env.QUICKBOOKS_PROFILE = 'production-main';
+    delete process.env.QUICKBOOKS_ENVIRONMENT;
+
+    const guard = checkWriteGuard('delete');
+    assert.equal(guard.allowed, false);
+    assert.equal(guard.environment, 'production');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('allows production deletes with profile flag', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-guard-'));
+    const configPath = path.join(tmpDir, 'config.json');
+
+    writeJson(configPath, {
+      defaultProfile: 'production-main',
+      profiles: {
+        'production-main': {
+          environment: 'production',
+          allowProductionDeletes: true,
+        },
+      },
+    });
+
+    process.env.QUICKBOOKS_CONFIG_PATH = configPath;
+    process.env.QUICKBOOKS_PROFILE = 'production-main';
+    delete process.env.QUICKBOOKS_ENVIRONMENT;
+    const guard = checkWriteGuard('delete');
+    assert.equal(guard.allowed, true);
+    assert.equal(guard.environment, 'production');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  // Legacy allowProductionWrites support removed.
 });

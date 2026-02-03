@@ -5,12 +5,14 @@ export const ProfileConfigSchema = z
     environment: z.enum(['sandbox', 'production']).optional(),
     realmId: z.string().min(1).optional(),
     companyName: z.string().min(1).optional(),
+    redirectUri: z.string().min(1).optional(),
     oauthPort: z.number().int().positive().optional(),
     tokenPath: z.string().min(1).optional(),
     idempotencyStoragePath: z.string().min(1).optional(),
     timeoutMs: z.number().int().positive().optional(),
     logLevel: z.enum(['DEBUG', 'INFO', 'WARN', 'ERROR']).optional(),
-    allowProductionWrites: z.boolean().optional(),
+    allowProductionCreates: z.boolean().optional(),
+    allowProductionDeletes: z.boolean().optional(),
   })
   .strict();
 

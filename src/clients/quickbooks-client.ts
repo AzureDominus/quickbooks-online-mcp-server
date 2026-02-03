@@ -21,6 +21,8 @@ const redirect_uri = resolvedConfig.redirectUri;
 // Request timeout configuration
 const QUICKBOOKS_TIMEOUT_MS = resolvedConfig.timeoutMs;
 
+type OAuthMode = 'auto' | 'manual';
+
 // Token storage path
 const TOKEN_STORAGE_PATH = resolvedConfig.tokenPath;
 
@@ -28,6 +30,11 @@ interface StoredTokens {
   refresh_token: string;
   realm_id: string;
   environment: string;
+}
+
+interface StoredOAuthState {
+  state: string;
+  createdAt: number;
 }
 
 function loadStoredTokens(): StoredTokens | null {
@@ -79,6 +86,89 @@ function saveTokens(tokens: StoredTokens): void {
   }
 }
 
+function oauthStatePath(): string {
+  return `${TOKEN_STORAGE_PATH}.oauth-state.json`;
+}
+
+function saveOAuthState(state: string): void {
+  try {
+    const statePath = oauthStatePath();
+    const stateDir = path.dirname(statePath);
+    if (!fs.existsSync(stateDir)) {
+      fs.mkdirSync(stateDir, { recursive: true });
+    }
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify({ state, createdAt: Date.now() } satisfies StoredOAuthState),
+      { mode: 0o600 }
+    );
+  } catch (e) {
+    logger.warn('Failed to save OAuth state', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+function loadOAuthState(): StoredOAuthState | null {
+  try {
+    const statePath = oauthStatePath();
+    if (!fs.existsSync(statePath)) {
+      return null;
+    }
+    const raw = fs.readFileSync(statePath, 'utf-8');
+    const data = JSON.parse(raw) as StoredOAuthState;
+    if (!data?.state || !data?.createdAt) {
+      return null;
+    }
+    // Expire after 15 minutes to avoid stale replays.
+    if (Date.now() - data.createdAt > 15 * 60 * 1000) {
+      clearOAuthState();
+      return null;
+    }
+    return data;
+  } catch (e) {
+    logger.warn('Failed to load OAuth state', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return null;
+  }
+}
+
+function clearOAuthState(): void {
+  try {
+    const statePath = oauthStatePath();
+    if (fs.existsSync(statePath)) {
+      fs.unlinkSync(statePath);
+    }
+  } catch (e) {
+    logger.warn('Failed to clear OAuth state', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+function resolveOAuthMode(): OAuthMode {
+  const raw = process.env.QUICKBOOKS_OAUTH_MODE?.trim().toLowerCase();
+  return raw === 'manual' ? 'manual' : 'auto';
+}
+
+function normalizeRedirectInput(input: string): { requestUrl: string; url: URL } {
+  const trimmed = input.trim();
+  let url: URL;
+
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    url = new URL(trimmed);
+  } else if (trimmed.startsWith('/')) {
+    url = new URL(`http://localhost${trimmed}`);
+  } else if (trimmed.startsWith('?')) {
+    url = new URL(`http://localhost/callback${trimmed}`);
+  } else {
+    url = new URL(`http://localhost/callback?${trimmed}`);
+  }
+
+  return { requestUrl: `${url.pathname}${url.search}`, url };
+}
+
 // Load stored tokens, fall back to env vars
 const storedTokens = loadStoredTokens();
 const refresh_token = storedTokens?.refresh_token || resolvedConfig.refreshToken;
@@ -126,6 +216,12 @@ class QuickbooksClient {
   }
 
   private async startOAuthFlow(): Promise<void> {
+    if (resolveOAuthMode() === 'manual') {
+      throw new Error(
+        'Manual OAuth mode enabled. Call oauth_start to get the authorization URL, then oauth_complete with the redirect URL.'
+      );
+    }
+
     if (this.isAuthenticating) {
       return;
     }
@@ -235,16 +331,7 @@ class QuickbooksClient {
 
       // Start server
       server.listen(port, async () => {
-        // Generate cryptographic random state for CSRF protection
-        this.oauthState = crypto.randomBytes(32).toString('hex');
-
-        // Generate authorization URL with proper type assertion
-        const authUri = this.oauthClient
-          .authorizeUri({
-            scope: [OAuthClient.scopes.Accounting as string],
-            state: this.oauthState,
-          })
-          .toString();
+        const authUri = this.createAuthorizationUrl();
 
         // Print auth URL so it can be opened manually (headless-friendly)
         logger.info(
@@ -277,6 +364,87 @@ class QuickbooksClient {
         reject(error);
       });
     });
+  }
+
+  private createAuthorizationUrl(): string {
+    this.oauthState = crypto.randomBytes(32).toString('hex');
+    return this.oauthClient
+      .authorizeUri({
+        scope: [OAuthClient.scopes.Accounting as string],
+        state: this.oauthState,
+      })
+      .toString();
+  }
+
+  beginManualOAuth(): {
+    authUrl: string;
+    redirectUri: string;
+    state: string;
+  } {
+    if (this.isAuthenticating) {
+      logger.warn('Manual OAuth requested while another auth flow is active; starting a new one.');
+    }
+
+    this.isAuthenticating = true;
+    const authUrl = this.createAuthorizationUrl();
+    if (this.oauthState) {
+      saveOAuthState(this.oauthState);
+    }
+
+    return {
+      authUrl,
+      redirectUri: this.redirectUri,
+      state: this.oauthState || '',
+    };
+  }
+
+  async completeManualOAuth(redirectUrl: string): Promise<{ realmId?: string }> {
+    const persistedState = loadOAuthState();
+    const expectedState = this.oauthState || persistedState?.state;
+    if (!expectedState) {
+      throw new Error('No pending OAuth session. Call oauth_start first.');
+    }
+
+    const { requestUrl, url } = normalizeRedirectInput(redirectUrl);
+    const state = url.searchParams.get('state');
+    const code = url.searchParams.get('code');
+
+    if (!code) {
+      throw new Error(
+        'Redirect URL is missing "code". Paste the full redirect URL from the browser.'
+      );
+    }
+
+    if (!state) {
+      throw new Error(
+        'Redirect URL is missing "state". Paste the full redirect URL from the browser.'
+      );
+    }
+
+    if (state !== expectedState) {
+      clearOAuthState();
+      throw new Error('OAuth state mismatch. Call oauth_start again and retry.');
+    }
+
+    try {
+      const response = await this.oauthClient.createToken(requestUrl);
+      const tokens = response.token;
+
+      this.refreshToken = tokens.refresh_token;
+      this.realmId = tokens.realmId;
+      this.saveTokensToEnv();
+
+      this.isAuthenticating = false;
+      this.oauthState = null;
+      clearOAuthState();
+
+      return { realmId: tokens.realmId };
+    } catch (error) {
+      this.isAuthenticating = false;
+      this.oauthState = null;
+      clearOAuthState();
+      throw error;
+    }
   }
 
   private saveTokensToEnv(): void {
@@ -429,6 +597,19 @@ class QuickbooksClient {
   }
 
   /**
+   * Clear tokens and pending OAuth state (logout)
+   */
+  logout(): { tokenPath: string; oauthStatePath: string } {
+    this.clearTokens();
+    this.realmId = undefined;
+    this.oauthState = null;
+    this.isAuthenticating = false;
+    clearOAuthState();
+
+    return { tokenPath: TOKEN_STORAGE_PATH, oauthStatePath: oauthStatePath() };
+  }
+
+  /**
    * Check if the client is currently authenticated with valid tokens
    */
   isAuthenticated(): boolean {
@@ -441,6 +622,20 @@ class QuickbooksClient {
    */
   hasRefreshToken(): boolean {
     return !!this.refreshToken;
+  }
+
+  /**
+   * Check if realm ID is available
+   */
+  hasRealmId(): boolean {
+    return !!this.realmId;
+  }
+
+  /**
+   * Get current realm ID (if available)
+   */
+  getRealmId(): string | undefined {
+    return this.realmId;
   }
 
   async authenticate() {

@@ -3,10 +3,21 @@ import { ToolDefinition } from '../types/tool-definition.js';
 import { z } from 'zod';
 import { checkWriteGuard } from './write-guard.js';
 
-const mutatingPrefixes = ['create_', 'update_', 'delete_', 'upload_'];
+const createPrefixes = ['create_', 'update_', 'upload_'];
+const deletePrefixes = ['delete_'];
+const nonMutatingTools = new Set(['create_profile']);
 
-function isMutatingTool(toolName: string): boolean {
-  return mutatingPrefixes.some((prefix) => toolName.startsWith(prefix));
+function getWriteOperation(toolName: string): 'create' | 'delete' | null {
+  if (nonMutatingTools.has(toolName)) {
+    return null;
+  }
+  if (deletePrefixes.some((prefix) => toolName.startsWith(prefix))) {
+    return 'delete';
+  }
+  if (createPrefixes.some((prefix) => toolName.startsWith(prefix))) {
+    return 'create';
+  }
+  return null;
 }
 
 export function RegisterTool<T extends z.ZodType<any, any>>(
@@ -28,8 +39,9 @@ export function RegisterTool<T extends z.ZodType<any, any>>(
     extra?: unknown
   ) => Promise<unknown> | unknown;
   const wrappedHandler = async (args: Record<string, unknown>, extra?: unknown) => {
-    if (isMutatingTool(toolDefinition.name)) {
-      const guard = checkWriteGuard();
+    const operation = getWriteOperation(toolDefinition.name);
+    if (operation) {
+      const guard = checkWriteGuard(operation);
       if (!guard.allowed) {
         return {
           content: [

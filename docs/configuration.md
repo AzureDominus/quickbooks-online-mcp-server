@@ -58,14 +58,16 @@ Example `config.json`:
       "realmId": "1234567890123456",
       "companyName": "Testing Sandbox Company",
       "tokenPath": "~/.config/quickbooks-mcp/tokens/sandbox-test.json",
-      "allowProductionWrites": false
+      "allowProductionCreates": false,
+      "allowProductionDeletes": false
     },
     "production-main": {
       "environment": "production",
       "realmId": "9999999999999999",
       "companyName": "Production Main Company",
       "tokenPath": "~/.config/quickbooks-mcp/tokens/production-main.json",
-      "allowProductionWrites": false
+      "allowProductionCreates": false,
+      "allowProductionDeletes": false
     }
   }
 }
@@ -94,8 +96,8 @@ Notes:
 
 - Existing `QUICKBOOKS_*` env vars still override profile settings.
 - Tokens are stored per profile via `tokenPath`.
-- For production writes, set `allowProductionWrites=true` in the profile and
-  `QUICKBOOKS_ALLOW_PRODUCTION_WRITES=1` in the environment.
+- For production creates/updates/uploads, set `allowProductionCreates=true` in the profile.
+- For production deletes, set `allowProductionDeletes=true` in the profile.
 - You can inspect the resolved config with the `get_current_config` tool.
 
 ## OAuth Configuration
@@ -187,6 +189,42 @@ QUICKBOOKS_OAUTH_PORT=9000
 ```
 
 **Note**: Remember to add the corresponding redirect URI to your Intuit app.
+
+---
+
+### QUICKBOOKS_REDIRECT_URI
+
+| Property | Value   |
+| -------- | ------- |
+| Required | No      |
+| Type     | String  |
+| Default  | `http://localhost:<oauthPort>/callback` |
+
+Explicit OAuth redirect URI. Use this when your callback is a public URL
+(for example via Cloudflare Tunnel).
+
+```env
+QUICKBOOKS_REDIRECT_URI=https://yourdomain.com/callback
+```
+
+---
+
+### QUICKBOOKS_OAUTH_MODE
+
+| Property | Value                     |
+| -------- | ------------------------- |
+| Required | No                        |
+| Type     | String (`auto` or `manual`) |
+| Default  | `auto`                    |
+
+OAuth flow mode. Use `manual` for headless environments (stdio / mcporter).
+
+```env
+QUICKBOOKS_OAUTH_MODE=manual
+```
+
+In manual mode, call `oauth_start` to get the authorization URL and
+`oauth_complete` with the redirect URL after approval.
 
 ---
 

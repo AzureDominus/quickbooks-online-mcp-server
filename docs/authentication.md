@@ -150,10 +150,53 @@ QUICKBOOKS_PROFILE=sandbox-test
 QUICKBOOKS_OAUTH_PORT=8765
 ```
 
+### Optional: Custom Redirect URI
+
+Use this when your callback is on a public domain (ex: Cloudflare Tunnel).
+
+```env
+QUICKBOOKS_REDIRECT_URI=https://yourdomain.com/callback
+```
+
 ### Optional: Custom Token Storage Path
 
 ```env
 QUICKBOOKS_TOKEN_PATH=/path/to/tokens.json
+```
+
+## Headless OAuth (mcporter / remote)
+
+If you're running the MCP server over stdio (for example via mcporter) and cannot
+open a local browser or receive the localhost callback, use the headless flow.
+
+1) Enable manual OAuth mode:
+
+```env
+QUICKBOOKS_OAUTH_MODE=manual
+```
+
+2) Start the flow to get the authorization URL:
+
+```bash
+mcporter call QuickBooks.oauth_start --output json
+```
+
+3) Open the `authUrl` in a browser, approve access, then copy the final redirect URL.
+
+4) Complete OAuth with the redirect URL:
+
+```bash
+mcporter call QuickBooks.oauth_complete --args '{"redirectUrl":"<paste redirect URL>"}' --output json
+```
+
+The server will save the refresh token + realm ID to the configured token path.
+
+### Logout (clear tokens)
+
+To force a re-authentication flow:
+
+```bash
+mcporter call QuickBooks.logout --output json
 ```
 
 ## Token Refresh Process

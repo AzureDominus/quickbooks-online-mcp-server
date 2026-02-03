@@ -13,6 +13,14 @@ const toolSchema = z.object({});
 interface HealthCheckResult {
   status: 'healthy' | 'degraded' | 'unhealthy';
   timestamp: string;
+  profile?: {
+    name?: string;
+    source: 'env' | 'config' | 'none';
+  };
+  company?: {
+    apiName?: string;
+    apiId?: string;
+  };
   checks: {
     oauth: {
       status: 'ok' | 'error';
@@ -44,6 +52,10 @@ const toolHandler = async (_args: Record<string, unknown>) => {
   const result: HealthCheckResult = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
+    profile: {
+      name: resolvedConfig.profileName,
+      source: resolvedConfig.profileSource,
+    },
     checks: {
       oauth: { status: 'ok', authenticated: false },
       circuitBreaker: {
@@ -78,54 +90,67 @@ const toolHandler = async (_args: Record<string, unknown>) => {
 
     // Check 2: OAuth Status - NEVER trigger OAuth flow, just check state
     const hasTokens = quickbooksClient.hasRefreshToken();
+    const hasRealm = quickbooksClient.hasRealmId();
     let isAuthenticated = false;
 
-    if (!hasTokens) {
+    if (!hasTokens || !hasRealm) {
       result.checks.oauth = {
         status: 'error',
         authenticated: false,
-        message: 'No OAuth tokens found. Run authentication flow first.',
+        message: 'Missing OAuth tokens or realm ID. Run authentication flow first.',
       };
       result.status = 'unhealthy';
     } else {
-      // Check if we have an active QuickBooks instance
       try {
-        quickbooksClient.getQuickbooks();
+        await quickbooksClient.authenticate();
         isAuthenticated = true;
         result.checks.oauth = {
           status: 'ok',
           authenticated: true,
         };
-      } catch {
-        // Tokens exist but session not established yet
+      } catch (authError) {
         result.checks.oauth = {
-          status: 'ok',
+          status: 'error',
           authenticated: false,
-          message:
-            'Tokens exist but not authenticated in this session. First API call will authenticate.',
+          message: authError instanceof Error ? authError.message : String(authError),
         };
+        result.status = 'unhealthy';
       }
     }
 
-    // Check 3: API Connectivity - only if already authenticated
+    // Check 3: API Connectivity - only if authenticated
     if (isAuthenticated) {
       const apiStartTime = Date.now();
       try {
         const qb = quickbooksClient.getQuickbooks() as any;
+        const realmId = quickbooksClient.getRealmId();
+        if (!realmId) {
+          throw new Error('No realm ID available. Re-authenticate and try again.');
+        }
+        let companyInfo: any = null;
 
         // Use circuit breaker for the API call
         await qboCircuitBreaker.execute(
           () =>
             new Promise<void>((resolve, reject) => {
-              qb.getCompanyInfo((err: any, _companyInfo: any) => {
+              qb.getCompanyInfo(realmId, (err: any, apiCompanyInfo: any) => {
                 if (err) {
                   reject(err);
                 } else {
+                  companyInfo = apiCompanyInfo;
                   resolve();
                 }
               });
             })
         );
+
+        const apiCompany = companyInfo?.CompanyInfo || companyInfo;
+        if (apiCompany) {
+          result.company = {
+            apiName: apiCompany.CompanyName || apiCompany.LegalName || apiCompany.Name,
+            apiId: apiCompany.Id,
+          };
+        }
 
         result.checks.api = {
           status: 'ok',

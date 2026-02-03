@@ -40,7 +40,8 @@ export interface ResolvedQuickbooksConfig {
   tokenPath: string;
   idempotencyStoragePath?: string;
   logLevel?: string;
-  allowProductionWrites: boolean;
+  allowProductionCreates: boolean;
+  allowProductionDeletes: boolean;
 }
 
 let cachedConfig: ResolvedQuickbooksConfig | null = null;
@@ -168,13 +169,13 @@ function resolveTokenPath(profileName: string | undefined, profile: ProfileConfi
   return DEFAULT_TOKEN_PATH;
 }
 
-function resolveConfigFiles(): { configPath: string; secretsPath: string } {
+export function resolveConfigFiles(): { configPath: string; secretsPath: string } {
   const configPath = expandHome(process.env.QUICKBOOKS_CONFIG_PATH || DEFAULT_CONFIG_PATH);
   const secretsPath = expandHome(process.env.QUICKBOOKS_SECRETS_PATH || DEFAULT_SECRETS_PATH);
   return { configPath, secretsPath };
 }
 
-function loadConfigFile(configPath: string): ConfigFile | null {
+export function loadConfigFile(configPath: string): ConfigFile | null {
   const raw = readJsonFileIfExists(configPath);
   if (!raw) {
     return null;
@@ -182,12 +183,29 @@ function loadConfigFile(configPath: string): ConfigFile | null {
   return ConfigFileSchema.parse(raw);
 }
 
-function loadSecretsFile(secretsPath: string): SecretsFile | null {
+export function loadSecretsFile(secretsPath: string): SecretsFile | null {
   const raw = readJsonFileIfExists(secretsPath);
   if (!raw) {
     return null;
   }
   return SecretsFileSchema.parse(raw);
+}
+
+function ensureParentDir(filePath: string, mode: number): void {
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true, mode });
+  }
+}
+
+export function writeConfigFile(configPath: string, data: ConfigFile): void {
+  ensureParentDir(configPath, 0o755);
+  fs.writeFileSync(configPath, JSON.stringify(data, null, 2) + '\n', { mode: 0o644 });
+}
+
+export function writeSecretsFile(secretsPath: string, data: SecretsFile): void {
+  ensureParentDir(secretsPath, 0o700);
+  fs.writeFileSync(secretsPath, JSON.stringify(data, null, 2) + '\n', { mode: 0o600 });
 }
 
 export function loadQuickbooksConfig(): ResolvedQuickbooksConfig {
@@ -217,6 +235,10 @@ export function loadQuickbooksConfig(): ResolvedQuickbooksConfig {
 
   const oauthPort =
     parseNumber(process.env.QUICKBOOKS_OAUTH_PORT) || profileConfig.oauthPort || 8765;
+  const redirectUri =
+    process.env.QUICKBOOKS_REDIRECT_URI ||
+    profileConfig.redirectUri ||
+    `http://localhost:${oauthPort}/callback`;
   const timeoutMs =
     parseNumber(process.env.QUICKBOOKS_TIMEOUT_MS) || profileConfig.timeoutMs || 30000;
   const tokenPath = resolveTokenPath(profileName, profileConfig);
@@ -224,9 +246,8 @@ export function loadQuickbooksConfig(): ResolvedQuickbooksConfig {
     process.env.IDEMPOTENCY_STORAGE_PATH || profileConfig.idempotencyStoragePath;
   const logLevel = process.env.LOG_LEVEL || profileConfig.logLevel;
 
-  const allowProductionWrites =
-    profileConfig.allowProductionWrites === true &&
-    process.env.QUICKBOOKS_ALLOW_PRODUCTION_WRITES === '1';
+  const allowProductionCreates = profileConfig.allowProductionCreates === true;
+  const allowProductionDeletes = profileConfig.allowProductionDeletes === true;
 
   cachedConfig = {
     profileName,
@@ -240,12 +261,13 @@ export function loadQuickbooksConfig(): ResolvedQuickbooksConfig {
     clientSecret,
     refreshToken,
     oauthPort,
-    redirectUri: `http://localhost:${oauthPort}/callback`,
+    redirectUri,
     timeoutMs,
     tokenPath,
     idempotencyStoragePath,
     logLevel,
-    allowProductionWrites,
+    allowProductionCreates,
+    allowProductionDeletes,
   };
 
   return cachedConfig;
@@ -262,7 +284,8 @@ export function getPublicConfig(config: ResolvedQuickbooksConfig): {
   tokenPath: string;
   idempotencyStoragePath?: string;
   logLevel?: string;
-  allowProductionWrites: boolean;
+  allowProductionCreates: boolean;
+  allowProductionDeletes: boolean;
   configPath: string;
   secretsPath: string;
 } {
@@ -277,7 +300,8 @@ export function getPublicConfig(config: ResolvedQuickbooksConfig): {
     tokenPath: config.tokenPath,
     idempotencyStoragePath: config.idempotencyStoragePath,
     logLevel: config.logLevel,
-    allowProductionWrites: config.allowProductionWrites,
+    allowProductionCreates: config.allowProductionCreates,
+    allowProductionDeletes: config.allowProductionDeletes,
     configPath: config.configPath,
     secretsPath: config.secretsPath,
   };
