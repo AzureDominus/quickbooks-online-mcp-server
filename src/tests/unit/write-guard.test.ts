@@ -58,7 +58,7 @@ describe('write guard', () => {
       profiles: {
         'production-main': {
           environment: 'production',
-          allowProductionCreates: true,
+          allowProductionCreates: false,
         },
       },
     });
@@ -107,7 +107,7 @@ describe('write guard', () => {
       profiles: {
         'production-main': {
           environment: 'production',
-          allowProductionDeletes: true,
+          allowProductionDeletes: false,
         },
       },
     });
